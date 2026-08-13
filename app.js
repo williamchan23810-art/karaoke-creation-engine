@@ -738,6 +738,7 @@ function saveActiveState() {
       titleVal,
       artistVal,
       langVal,
+      duration: state.duration,
       activePage,
       currentSongKey: state.currentSongKey,
       imported: state.imported,
@@ -841,6 +842,7 @@ window.applyStateData = function(data) {
   // Restore state properties
   state.currentSongKey = data.currentSongKey || '';
   state.imported = !!data.imported;
+  state.duration = data.duration || 180; // default 180s if not set
   state.frontLyricsText = data.frontLyricsText || '';
   state.frontBioText = data.frontBioText || '';
   state.frontBioSegments = data.frontBioSegments || [];
@@ -878,11 +880,15 @@ window.applyStateData = function(data) {
     
     // Auto-reload audio if serverUrl or local path is present
     if (state.frontAudioFile.serverUrl) {
-      try {
-        window.setAudioSource(state.frontAudioFile.serverUrl);
-        audio.loop = false;
-      } catch(e) {
-        console.error("Error auto-reloading server audio:", e);
+      if (state.frontAudioFile.serverUrl.startsWith('blob:')) {
+        logToConsole("Bypassed loading expired blob URL on page refresh.");
+      } else {
+        try {
+          window.setAudioSource(state.frontAudioFile.serverUrl);
+          audio.loop = false;
+        } catch(e) {
+          console.error("Error auto-reloading server audio:", e);
+        }
       }
     } else if (state.frontAudioFile.isLocalPath && state.frontAudioFile.localPath) {
       try {
@@ -971,7 +977,11 @@ window.applyStateData = function(data) {
     
     // Load audio URL if present
     if (state.config.config && state.config.config.audioUrl) {
-      window.setAudioSource(state.config.config.audioUrl);
+      if (state.config.config.audioUrl.startsWith('blob:')) {
+        logToConsole("Bypassed loading expired config blob URL on page refresh.");
+      } else {
+        window.setAudioSource(state.config.config.audioUrl);
+      }
     }
   }
   
@@ -8687,6 +8697,109 @@ function setupStudioPanelControls() {
       
       studioMsgInput.value = '';
     });
+  }
+
+  // Project JSON Export
+  const btnExportProjectJson = document.getElementById('btn-export-project-json');
+  if (btnExportProjectJson) {
+    btnExportProjectJson.addEventListener('click', () => {
+      try {
+        if (typeof saveActiveState === 'function') saveActiveState();
+        const saved = localStorage.getItem('karaoke_engine_state');
+        if (!saved) {
+          alert("No active project to export. Please enter a song name and import audio first!");
+          return;
+        }
+        const data = JSON.parse(saved);
+        const title = (data.titleVal || 'project').replace(/[^a-z0-9]/gi, '_').toLowerCase();
+        
+        const blob = new Blob([saved], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `karaoke_project_${title}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        logToConsole(`Project exported as JSON successfully.`);
+      } catch (err) {
+        alert("Export failed: " + err.message);
+      }
+    });
+  }
+
+  // Project JSON Import
+  const btnImportProjectJson = document.getElementById('btn-import-project-json');
+  const inputImportProjectJson = document.getElementById('input-import-project-json');
+  if (btnImportProjectJson && inputImportProjectJson) {
+    btnImportProjectJson.addEventListener('click', () => {
+      inputImportProjectJson.click();
+    });
+    
+    inputImportProjectJson.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      
+      const reader = new FileReader();
+      reader.onload = function(evt) {
+        try {
+          const parsed = JSON.parse(evt.target.result);
+          if (parsed.duration) {
+            state.duration = parsed.duration;
+          }
+          
+          window.applyStateData(parsed);
+          
+          // Save imported state as the active state immediately
+          localStorage.setItem('karaoke_engine_state', evt.target.result);
+          
+          alert("Project imported successfully! Please select your audio file again to play or render.");
+          logToConsole(`Project "${parsed.titleVal}" imported from JSON file.`);
+          
+          // Re-render project list and timeline
+          if (typeof renderSavedProjectsList === 'function') renderSavedProjectsList();
+          if (typeof updateTimeline === 'function') updateTimeline();
+        } catch (err) {
+          alert("Invalid project file: " + err.message);
+        }
+      };
+      reader.readAsText(file);
+      inputImportProjectJson.value = ''; // reset
+    });
+  }
+
+  // Insert Song Title to Overlays Timeline Track 4 helpers
+  const insertTitleToOverlays = () => {
+    const songTitle = (state.config && state.config.metadata && state.config.metadata.songName) || 
+                      (document.getElementById('studio-title-input') ? document.getElementById('studio-title-input').value.trim() : '') || 
+                      (document.getElementById('front-song-title') ? document.getElementById('front-song-title').value.trim() : 'Untitled Song');
+    
+    const newMsg = {
+      id: 'ov_text_' + Date.now(),
+      type: 'text',
+      content: songTitle,
+      startTime: state.currentTime,
+      endTime: Math.min(state.duration, state.currentTime + 6.0) // default 6s duration
+    };
+    
+    if (!state.config.overlays) state.config.overlays = [];
+    state.config.overlays.push(newMsg);
+    state.config.overlays.sort((a, b) => a.startTime - b.startTime);
+    
+    updateTimeline();
+    logToConsole(`[Ad/Message Layer] Placed Song Title overlay ("${songTitle}") on Track 4 at ${state.currentTime.toFixed(2)}s.`);
+    alert(`Song Title overlay ("${songTitle}") placed on Track 4 at ${state.currentTime.toFixed(2)}s!`);
+  };
+
+  const btnStudioTitleToOverlay = document.getElementById('btn-studio-title-to-overlay');
+  if (btnStudioTitleToOverlay) {
+    btnStudioTitleToOverlay.addEventListener('click', insertTitleToOverlays);
+  }
+
+  const btnStudioInsertTitleOverlay = document.getElementById('btn-studio-insert-title-overlay');
+  if (btnStudioInsertTitleOverlay) {
+    btnStudioInsertTitleOverlay.addEventListener('click', insertTitleToOverlays);
   }
 
   // Font Size picker in main Fonts & Styles popup

@@ -2437,8 +2437,15 @@ body {
         </div>
 
         <!-- Container 3: Project Box (Saved Projects List) -->
-        <div class="front-card" style="margin-top: 10px; display: none !important; flex-direction: column;">
-          <h3 style="margin-top: 0; margin-bottom: 8px; font-size: 0.75rem; text-transform: uppercase; color: #ff7b00; letter-spacing: 0.5px;">📁 Saved Projects</h3>
+        <div class="front-card" style="margin-top: 10px; display: flex; flex-direction: column;">
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; flex-wrap: wrap; gap: 4px;">
+            <h3 style="margin: 0; font-size: 0.75rem; text-transform: uppercase; color: #ff7b00; letter-spacing: 0.5px;">📁 Projects Library</h3>
+            <div style="display: flex; gap: 4px;">
+              <button id="btn-import-project-json" class="btn" style="font-size: 0.55rem; padding: 2px 6px; background: #1e3a8a !important; border: 1px solid #3b82f6 !important; color: #fff; cursor: pointer; border-radius: 3px; font-weight: bold; line-height: 1.2;" title="Import Project JSON File">📥 Import JSON</button>
+              <button id="btn-export-project-json" class="btn" style="font-size: 0.55rem; padding: 2px 6px; background: #854d0e !important; border: 1px solid #ff7b00 !important; color: #fff; cursor: pointer; border-radius: 3px; font-weight: bold; line-height: 1.2;" title="Export Current Project JSON File">📤 Export JSON</button>
+              <input type="file" id="input-import-project-json" style="display: none;" accept=".json">
+            </div>
+          </div>
           <div id="project-box-list" class="studio-scroller" style="max-height: 110px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; padding-right: 2px;">
             <p style="font-size: 0.6rem; color: var(--text-muted); margin: 0; font-style: italic;">No saved projects found.</p>
           </div>
@@ -2713,7 +2720,10 @@ body {
                   </div>
                   <div class="front-form-group" style="margin-bottom: 4px;">
                     <label for="studio-title-input" style="font-size:0.68rem; color:var(--text-muted); display:block; margin-bottom:1px; text-align: left;">Song Title</label>
-                    <input type="text" id="studio-title-input" placeholder="Edit Song Title..." style="font-size:0.65rem; padding:3px; background: var(--bg-dark); border:1px solid #854d0e; border-radius:4px; color:#fff; width:100%; box-sizing:border-box; outline: none;">
+                    <div style="display: flex; gap: 4px; align-items: center; width: 100%;">
+                      <input type="text" id="studio-title-input" placeholder="Edit Song Title..." style="font-size:0.65rem; padding:3px; background: var(--bg-dark); border:1px solid #854d0e; border-radius:4px; color:#fff; flex: 1; min-width: 0; box-sizing:border-box; outline: none;">
+                      <button id="btn-studio-title-to-overlay" class="btn" style="font-size: 0.55rem; padding: 3px 6px; background: #1e3a8a !important; border: 1px solid #3b82f6 !important; color: #fff !important; cursor: pointer; border-radius: 4px; font-weight: bold; height: 24px; box-sizing: border-box; line-height: 1.2;" title="Insert Song Title as Overlay on Timeline">➕ Overlay</button>
+                    </div>
                   </div>
                   <div class="front-form-group" style="margin-bottom: 4px;">
                     <label for="studio-artist-input" style="font-size:0.68rem; color:var(--text-muted); display:block; margin-bottom:1px; text-align: left;">Artist / Singer</label>
@@ -2812,7 +2822,10 @@ body {
                   <div class="front-form-group" style="margin-top:2px;">
                     <label for="studio-msg-input" style="font-size:0.68rem; color:var(--text-muted); display:block; margin-bottom:2px; text-align: left;">Custom Message Overlay / Ad</label>
                     <input type="text" id="studio-msg-input" placeholder="Type overlay message here..." style="font-size:0.65rem; padding:2px; background: var(--bg-dark); border:1px solid #854d0e; border-radius:4px; color:#fff; width:100%; box-sizing:border-box; outline: none;">
-                    <button id="btn-studio-insert-msg" class="btn btn-tiny" style="width:100%; margin-top:4px; height:18px; font-size:0.62rem; background-color: #854d0e !important; border: 1px solid #ff7b00 !important; color: #fff !important;">➕ Insert Message Overlay</button>
+                    <div style="display: flex; flex-direction: column; gap: 4px; margin-top: 4px; width: 100%;">
+                      <button id="btn-studio-insert-msg" class="btn btn-tiny" style="width:100%; height:18px; font-size:0.62rem; background-color: #854d0e !important; border: 1px solid #ff7b00 !important; color: #fff !important;">➕ Insert Message Overlay</button>
+                      <button id="btn-studio-insert-title-overlay" class="btn btn-tiny" style="width:100%; height:18px; font-size:0.62rem; background-color: #1e3a8a !important; border: 1px solid #3b82f6 !important; color: #fff !important;">➕ Insert Song Title as Overlay</button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -3507,9 +3520,10 @@ function saveActiveState() {
     }
 
     const dataToSave = {
-      titleVal,
-      artistVal,
-      langVal,
+      titleVal: titleVal,
+      artistVal: artistVal,
+      langVal: langVal,
+      duration: state.duration,
       activePage,
       currentSongKey: state.currentSongKey,
       imported: state.imported,
@@ -3569,6 +3583,7 @@ window.applyStateData = function(data) {
   // Restore state properties
   state.currentSongKey = data.currentSongKey || '';
   state.imported = !!data.imported;
+  state.duration = data.duration || 180; // default 180s if not set
   state.frontLyricsText = data.frontLyricsText || '';
   state.frontBioText = data.frontBioText || '';
   state.frontBioSegments = data.frontBioSegments || [];
@@ -3604,11 +3619,15 @@ window.applyStateData = function(data) {
     
     // Auto-reload audio if serverUrl or local path is present
     if (state.frontAudioFile.serverUrl) {
-      try {
-        window.setAudioSource(state.frontAudioFile.serverUrl);
-        audio.loop = false;
-      } catch(e) {
-        console.error("Error auto-reloading server audio:", e);
+      if (state.frontAudioFile.serverUrl.startsWith('blob:')) {
+        logToConsole("Bypassed loading expired blob URL on page refresh.");
+      } else {
+        try {
+          window.setAudioSource(state.frontAudioFile.serverUrl);
+          audio.loop = false;
+        } catch(e) {
+          console.error("Error auto-reloading server audio:", e);
+        }
       }
     } else if (state.frontAudioFile.isLocalPath && state.frontAudioFile.localPath) {
       try {
@@ -3697,7 +3716,11 @@ window.applyStateData = function(data) {
     
     // Load audio URL if present
     if (state.config.config && state.config.config.audioUrl) {
-      window.setAudioSource(state.config.config.audioUrl);
+      if (state.config.config.audioUrl.startsWith('blob:')) {
+        logToConsole("Bypassed loading expired config blob URL on page refresh.");
+      } else {
+        window.setAudioSource(state.config.config.audioUrl);
+      }
     }
   }
   
@@ -11583,6 +11606,109 @@ function setupStudioPanelControls() {
       
       studioMsgInput.value = '';
     });
+  }
+
+  // Project JSON Export
+  const btnExportProjectJson = document.getElementById('btn-export-project-json');
+  if (btnExportProjectJson) {
+    btnExportProjectJson.addEventListener('click', () => {
+      try {
+        if (typeof saveActiveState === 'function') saveActiveState();
+        const saved = localStorage.getItem('karaoke_engine_state');
+        if (!saved) {
+          alert("No active project to export. Please enter a song name and import audio first!");
+          return;
+        }
+        const data = JSON.parse(saved);
+        const title = (data.titleVal || 'project').replace(/[^a-z0-9]/gi, '_').toLowerCase();
+        
+        const blob = new Blob([saved], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `karaoke_project_${title}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        logToConsole(`Project exported as JSON successfully.`);
+      } catch (err) {
+        alert("Export failed: " + err.message);
+      }
+    });
+  }
+
+  // Project JSON Import
+  const btnImportProjectJson = document.getElementById('btn-import-project-json');
+  const inputImportProjectJson = document.getElementById('input-import-project-json');
+  if (btnImportProjectJson && inputImportProjectJson) {
+    btnImportProjectJson.addEventListener('click', () => {
+      inputImportProjectJson.click();
+    });
+    
+    inputImportProjectJson.addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (!file) return;
+      
+      const reader = new FileReader();
+      reader.onload = function(evt) {
+        try {
+          const parsed = JSON.parse(evt.target.result);
+          if (parsed.duration) {
+            state.duration = parsed.duration;
+          }
+          
+          window.applyStateData(parsed);
+          
+          // Save imported state as the active state immediately
+          localStorage.setItem('karaoke_engine_state', evt.target.result);
+          
+          alert("Project imported successfully! Please select your audio file again to play or render.");
+          logToConsole(`Project "${parsed.titleVal}" imported from JSON file.`);
+          
+          // Re-render project list and timeline
+          if (typeof renderSavedProjectsList === 'function') renderSavedProjectsList();
+          if (typeof updateTimeline === 'function') updateTimeline();
+        } catch (err) {
+          alert("Invalid project file: " + err.message);
+        }
+      };
+      reader.readAsText(file);
+      inputImportProjectJson.value = ''; // reset
+    });
+  }
+
+  // Insert Song Title to Overlays Timeline Track 4 helpers
+  const insertTitleToOverlays = () => {
+    const songTitle = (state.config && state.config.metadata && state.config.metadata.songName) || 
+                      (document.getElementById('studio-title-input') ? document.getElementById('studio-title-input').value.trim() : '') || 
+                      (document.getElementById('front-song-title') ? document.getElementById('front-song-title').value.trim() : 'Untitled Song');
+    
+    const newMsg = {
+      id: 'ov_text_' + Date.now(),
+      type: 'text',
+      content: songTitle,
+      startTime: state.currentTime,
+      endTime: Math.min(state.duration, state.currentTime + 6.0) // default 6s duration
+    };
+    
+    if (!state.config.overlays) state.config.overlays = [];
+    state.config.overlays.push(newMsg);
+    state.config.overlays.sort((a, b) => a.startTime - b.startTime);
+    
+    updateTimeline();
+    logToConsole(`[Ad/Message Layer] Placed Song Title overlay ("${songTitle}") on Track 4 at ${state.currentTime.toFixed(2)}s.`);
+    alert(`Song Title overlay ("${songTitle}") placed on Track 4 at ${state.currentTime.toFixed(2)}s!`);
+  };
+
+  const btnStudioTitleToOverlay = document.getElementById('btn-studio-title-to-overlay');
+  if (btnStudioTitleToOverlay) {
+    btnStudioTitleToOverlay.addEventListener('click', insertTitleToOverlays);
+  }
+
+  const btnStudioInsertTitleOverlay = document.getElementById('btn-studio-insert-title-overlay');
+  if (btnStudioInsertTitleOverlay) {
+    btnStudioInsertTitleOverlay.addEventListener('click', insertTitleToOverlays);
   }
 
   // Font Size picker in main Fonts & Styles popup
