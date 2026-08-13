@@ -1,0 +1,16 @@
+node_modules/
+exports/
+audio_library/
+image_library/
+public/audio_library/
+public/image_library/
+.DS_Store
+Thumbs.db
+*.log
+*.mp4
+*.webm
+*.zip
+*.bat
+*.txt
+*.json
+!package.json

@@ -1,0 +1,12 @@
+{
+  "name": "karaoke-creation-engine",
+  "version": "1.0.0",
+  "description": "An engine for Lyrics of Song",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "ffmpeg-static": "^5.2.0"
+  }
+}
