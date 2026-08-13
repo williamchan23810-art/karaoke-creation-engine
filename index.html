@@ -4320,25 +4320,60 @@ function setupEventListeners() {
       btnUploadSongLibrary.innerText = '⏳ Uploading...';
       
       try {
-        logToConsole(`Uploading song to library: ${file.name}`);
-        const response = await fetch('/api/audio-library', {
-          method: 'POST',
-          headers: {
-            'x-filename': encodeURIComponent(file.name)
-          },
-          body: file
-        });
+        let filename = file.name;
+        let relativeUrl = null;
+        let isFallback = false;
         
-        if (response.ok) {
-          const resData = await response.json();
-          logToConsole(`Successfully uploaded song: ${resData.filename}`);
-          alert(`Uploaded "${file.name}" to library!`);
+        try {
+          logToConsole(`Uploading song to library: ${file.name}`);
+          const response = await fetch('/api/audio-library', {
+            method: 'POST',
+            headers: {
+              'x-filename': encodeURIComponent(file.name)
+            },
+            body: file
+          });
           
-          // Load this song automatically
-          loadLibrarySong(resData.filename);
-        } else {
-          const errMsg = await response.text();
-          throw new Error(errMsg);
+          if (response.ok) {
+            const resData = await response.json();
+            filename = resData.filename;
+            relativeUrl = `/audio_library/${encodeURIComponent(resData.filename)}`;
+            logToConsole(`Successfully uploaded song: ${resData.filename}`);
+          } else {
+            const errMsg = await response.text();
+            throw new Error(errMsg);
+          }
+        } catch (uploadErr) {
+          logToConsole(`Song library upload failed: ${uploadErr.message}. Falling back to client-side Blob URL.`);
+          isFallback = true;
+          relativeUrl = URL.createObjectURL(file);
+        }
+        
+        if (relativeUrl) {
+          if (isFallback) {
+            logToConsole(`Loading library song as backing track (fallback): ${file.name}`);
+            window.setAudioSource(relativeUrl);
+            if (state.config && state.config.config) {
+              state.config.config.audioUrl = relativeUrl;
+            }
+            state.frontAudioFile = {
+              name: file.name,
+              size: file.size,
+              type: file.type,
+              isLocalPath: false,
+              serverUrl: relativeUrl
+            };
+            const frontAudioBtn = document.getElementById('front-audio-btn');
+            if (frontAudioBtn) {
+              frontAudioBtn.classList.add('loaded');
+              frontAudioBtn.innerHTML = `📁 Loaded: ${file.name.replace(/\.[^/.]+$/, "")}`;
+            }
+            if (typeof saveActiveState === 'function') saveActiveState();
+            alert(`Active backing track changed to "${file.name}"!`);
+          } else {
+            alert(`Uploaded "${file.name}" to library!`);
+            loadLibrarySong(filename);
+          }
         }
       } catch (err) {
         logToConsole(`Upload error: ${err.message}`);
@@ -8238,7 +8273,7 @@ function handleExport() {
     label.innerText = 'Failed';
     label.style.color = '#ef4444';
     logToConsole(`Export Error: ${err.message}`);
-    alert(`Render Error: ${err.message}`);
+    alert(`Render Error: ${err.message}. Note: Rendering requires the application to be run locally using the Node server backend.`);
   });
 }
 
@@ -8961,22 +8996,28 @@ function setupFrontPageEventListeners() {
       if (frontBtnImport) frontBtnImport.disabled = true;
       if (frontBtnPlay) frontBtnPlay.disabled = true;
 
-      logToConsole(`Uploading selected file to server: ${file.name}`);
-      const response = await fetch('/api/audio-library', {
-        method: 'POST',
-        headers: {
-          'x-filename': encodeURIComponent(file.name)
-        },
-        body: file
-      });
-      
-      if (!response.ok) {
-        throw new Error(await response.text());
+      let serverUrl = null;
+      try {
+        logToConsole(`Uploading selected file to server: ${file.name}`);
+        const response = await fetch('/api/audio-library', {
+          method: 'POST',
+          headers: {
+            'x-filename': encodeURIComponent(file.name)
+          },
+          body: file
+        });
+        
+        if (!response.ok) {
+          throw new Error(await response.text());
+        }
+        
+        const resData = await response.json();
+        serverUrl = '/audio_library/' + resData.filename;
+        logToConsole(`Successfully uploaded song to server: ${resData.filename}`);
+      } catch (uploadErr) {
+        logToConsole(`Server upload failed: ${uploadErr.message}. Falling back to client-side Blob URL.`);
+        serverUrl = URL.createObjectURL(file);
       }
-      
-      const resData = await response.json();
-      const serverUrl = '/audio_library/' + resData.filename;
-      logToConsole(`Successfully uploaded song to server: ${resData.filename}`);
       
       state.frontAudioFile = {
         name: file.name,
@@ -9037,7 +9078,7 @@ function setupFrontPageEventListeners() {
       } else {
         updateSongNameBoxes();
       }
-      logToConsole(`Front Page: Audio file loaded and uploaded to server - ${file.name}`);
+      logToConsole(`Front Page: Audio file loaded - ${file.name}`);
       runStructureAnalystAgent(file);
     } catch (err) {
       logToConsole(`ERROR in file upload change handler: ${err.message}`);
@@ -9066,22 +9107,28 @@ function setupFrontPageEventListeners() {
           frontVocalsBtn.innerHTML = `⏳ Uploading Vocals...`;
         }
 
-        logToConsole(`Uploading vocals file to server: ${file.name}`);
-        const response = await fetch('/api/audio-library', {
-          method: 'POST',
-          headers: {
-            'x-filename': encodeURIComponent(file.name)
-          },
-          body: file
-        });
-        
-        if (!response.ok) {
-          throw new Error(await response.text());
+        let serverUrl = null;
+        try {
+          logToConsole(`Uploading vocals file to server: ${file.name}`);
+          const response = await fetch('/api/audio-library', {
+            method: 'POST',
+            headers: {
+              'x-filename': encodeURIComponent(file.name)
+            },
+            body: file
+          });
+          
+          if (!response.ok) {
+            throw new Error(await response.text());
+          }
+          
+          const resData = await response.json();
+          serverUrl = '/audio_library/' + resData.filename;
+          logToConsole(`Successfully uploaded vocals to server: ${resData.filename}`);
+        } catch (uploadErr) {
+          logToConsole(`Vocals upload failed: ${uploadErr.message}. Falling back to client-side Blob URL.`);
+          serverUrl = URL.createObjectURL(file);
         }
-        
-        const resData = await response.json();
-        const serverUrl = '/audio_library/' + resData.filename;
-        logToConsole(`Successfully uploaded vocals to server: ${resData.filename}`);
         
         state.frontVocalsAudioFile = {
           name: file.name,
@@ -10487,29 +10534,41 @@ function setupStudioPanelControls() {
       
       for (const file of files) {
         try {
-          logToConsole(`Uploading image to library: ${file.name}`);
-          const response = await fetch('/api/image-library', {
-            method: 'POST',
-            headers: {
-              'x-filename': encodeURIComponent(file.name)
-            },
-            body: file
-          });
-          if (response.ok) {
-            const resData = await response.json();
-            const imageUrl = `/image_library/${encodeURIComponent(resData.filename)}`;
+          let imageUrl = null;
+          let imageName = file.name;
+          try {
+            logToConsole(`Uploading image to library: ${file.name}`);
+            const response = await fetch('/api/image-library', {
+              method: 'POST',
+              headers: {
+                'x-filename': encodeURIComponent(file.name)
+              },
+              body: file
+            });
+            if (response.ok) {
+              const resData = await response.json();
+              imageUrl = `/image_library/${encodeURIComponent(resData.filename)}`;
+              imageName = resData.filename.replace(/\.[^/.]+$/, "");
+              logToConsole(`Successfully uploaded image: ${resData.filename}`);
+            } else {
+              const errMsg = await response.text();
+              throw new Error(errMsg);
+            }
+          } catch (uploadErr) {
+            logToConsole(`Image upload failed: ${uploadErr.message}. Falling back to client-side Blob URL.`);
+            imageUrl = URL.createObjectURL(file);
+            imageName = file.name.replace(/\.[^/.]+$/, "");
+          }
+          
+          if (imageUrl) {
             state.imageLibrary.push({
-              name: resData.filename.replace(/\.[^/.]+$/, ""),
+              name: imageName,
               url: imageUrl
             });
-            logToConsole(`Successfully uploaded image: ${resData.filename}`);
-          } else {
-            const errMsg = await response.text();
-            throw new Error(errMsg);
           }
         } catch (err) {
           logToConsole(`Image upload error: ${err.message}`);
-          alert(`Failed to upload image: ${err.message}`);
+          alert(`Failed to process image: ${err.message}`);
         }
       }
       
@@ -11130,29 +11189,41 @@ function setupStudioPanelControls() {
       for (const file of files) {
         if (file.type.startsWith('image/')) {
           try {
-            logToConsole(`Uploading dropped image to library: ${file.name}`);
-            const response = await fetch('/api/image-library', {
-              method: 'POST',
-              headers: {
-                'x-filename': encodeURIComponent(file.name)
-              },
-              body: file
-            });
-            if (response.ok) {
-              const resData = await response.json();
-              const imageUrl = `/image_library/${encodeURIComponent(resData.filename)}`;
+            let imageUrl = null;
+            let imageName = file.name;
+            try {
+              logToConsole(`Uploading dropped image to library: ${file.name}`);
+              const response = await fetch('/api/image-library', {
+                method: 'POST',
+                headers: {
+                  'x-filename': encodeURIComponent(file.name)
+                },
+                body: file
+              });
+              if (response.ok) {
+                const resData = await response.json();
+                imageUrl = `/image_library/${encodeURIComponent(resData.filename)}`;
+                imageName = resData.filename.replace(/\.[^/.]+$/, "");
+                logToConsole(`Successfully uploaded image: ${resData.filename}`);
+              } else {
+                const errMsg = await response.text();
+                throw new Error(errMsg);
+              }
+            } catch (uploadErr) {
+              logToConsole(`Dropped image upload failed: ${uploadErr.message}. Falling back to client-side Blob URL.`);
+              imageUrl = URL.createObjectURL(file);
+              imageName = file.name.replace(/\.[^/.]+$/, "");
+            }
+            
+            if (imageUrl) {
               state.imageLibrary.push({
-                name: resData.filename.replace(/\.[^/.]+$/, ""),
+                name: imageName,
                 url: imageUrl
               });
-              logToConsole(`Successfully uploaded image: ${resData.filename}`);
-            } else {
-              const errMsg = await response.text();
-              throw new Error(errMsg);
             }
           } catch (err) {
-            logToConsole(`Image drop upload error: ${err.message}`);
-            alert(`Failed to upload dropped image: ${err.message}`);
+            logToConsole(`Image drop process error: ${err.message}`);
+            alert(`Failed to process dropped image: ${err.message}`);
           }
         }
       }
