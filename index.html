@@ -2833,8 +2833,8 @@ body {
             <span>Untitled Song</span>
           </div>
           <div style="display: flex; gap: 4px; background: rgba(0,0,0,0.3); border: 1px solid rgba(255,255,255,0.15); border-radius: 4px; padding: 2px; height: 32px; box-sizing: border-box; align-items: center;">
-            <button id="btn-song-original" class="btn" style="height: 26px !important; font-size: 0.65rem !important; font-weight: bold !important; border: none !important; border-radius: 3px !important; cursor: pointer; padding: 0 8px !important; display: flex !important; align-items: center !important; justify-content: center !important; margin: 0 !important; background: rgba(255,255,255,0.05); color: #a0aec0;" title="Play Song with Original Vocals">🎤 Original</button>
-            <button id="btn-song-instrumental" class="btn" style="height: 26px !important; font-size: 0.65rem !important; font-weight: bold !important; border: none !important; border-radius: 3px !important; cursor: pointer; padding: 0 8px !important; display: flex !important; align-items: center !important; justify-content: center !important; margin: 0 !important; background: #0284c7; color: #fff;" title="Play Music Only (Vocal track muted)">🎵 Music Only</button>
+            <button id="btn-song-original" class="btn" style="height: 26px !important; font-size: 0.65rem !important; font-weight: bold !important; border: 1px solid #00f2fe !important; border-radius: 3px !important; cursor: pointer; padding: 0 8px !important; display: flex !important; align-items: center !important; justify-content: center !important; margin: 0 !important; background: #0284c7; color: #fff;" title="Play Song with Original Vocals">🎤 Original</button>
+            <button id="btn-song-instrumental" class="btn" style="height: 26px !important; font-size: 0.65rem !important; font-weight: bold !important; border: none !important; border-radius: 3px !important; cursor: pointer; padding: 0 8px !important; display: flex !important; align-items: center !important; justify-content: center !important; margin: 0 !important; background: rgba(255,255,255,0.05); color: #a0aec0;" title="Play Music Only (Vocal track muted)">🎵 Music Only</button>
           </div>
           <select id="audio-mode-selector" style="height: 32px; background: rgba(0,0,0,0.5); border: 1px solid rgba(255,255,255,0.15); border-radius: 4px; color: #a0aec0; font-size: 0.65rem; padding: 0 4px; cursor: pointer; outline: none;" title="Vocal removal algorithm for standard files">
             <option value="vocal-cut">Vocal Cut (Stereo Cancel)</option>
@@ -2976,6 +2976,96 @@ function getLocalFileUrl(pathStr) {
   return `/api/file?path=${encodeURIComponent(pathStr)}`;
 }
 
+function bufferToWav(buffer) {
+  let numOfChan = buffer.numberOfChannels,
+      length = buffer.length * numOfChan * 2 + 44,
+      bufferArr = new ArrayBuffer(length),
+      view = new DataView(bufferArr),
+      channels = [], i, sample,
+      offset = 0,
+      pos = 0;
+
+  function setUint16(data) {
+    view.setUint16(pos, data, true);
+    pos += 2;
+  }
+
+  function setUint32(data) {
+    view.setUint32(pos, data, true);
+    pos += 4;
+  }
+
+  // write HEADERS
+  setUint32(0x46464952);                         // "RIFF"
+  setUint32(length - 8);                         // file length - 8
+  setUint32(0x45564157);                         // "WAVE"
+
+  setUint32(0x20746d66);                         // "fmt " chunk
+  setUint32(16);                                 // chunk length
+  setUint16(1);                                  // sample format (raw pcm)
+  setUint16(numOfChan);                          // channel count
+  setUint32(buffer.sampleRate);                  // sample rate
+  setUint32(buffer.sampleRate * 2 * numOfChan); // byte rate
+  setUint16(numOfChan * 2);                      // block align
+  setUint16(16);                                 // 16-bit precision
+
+  setUint32(0x61746164);                         // "data" chunk
+  setUint32(length - pos - 4);                   // chunk length
+
+  for (i = 0; i < buffer.numberOfChannels; i++) {
+    channels.push(buffer.getChannelData(i));
+  }
+
+  while (pos < length) {
+    for (i = 0; i < numOfChan; i++) {
+      sample = Math.max(-1, Math.min(1, channels[i][offset]));
+      sample = (sample < 0 ? sample * 0x8000 : sample * 0x7FFF);
+      view.setInt16(pos, sample, true);
+      pos += 2;
+    }
+    offset++;
+  }
+
+  return new Blob([bufferArr], { type: "audio/wav" });
+}
+
+async function generateInstrumental(file) {
+  const tempCtx = new (window.AudioContext || window.webkitAudioContext)();
+  const arrayBuffer = await file.arrayBuffer();
+  const audioBuffer = await tempCtx.decodeAudioData(arrayBuffer);
+  
+  const sampleRate = audioBuffer.sampleRate;
+  const length = audioBuffer.length;
+  const numChannels = audioBuffer.numberOfChannels;
+  
+  const instBuffer = tempCtx.createBuffer(2, length, sampleRate);
+  
+  if (numChannels >= 2) {
+    const leftIn = audioBuffer.getChannelData(0);
+    const rightIn = audioBuffer.getChannelData(1);
+    const leftOut = instBuffer.getChannelData(0);
+    const rightOut = instBuffer.getChannelData(1);
+    
+    for (let i = 0; i < length; i++) {
+      const val = leftIn[i] - rightIn[i];
+      leftOut[i] = val;
+      rightOut[i] = -val;
+    }
+  } else {
+    const monoIn = audioBuffer.getChannelData(0);
+    const leftOut = instBuffer.getChannelData(0);
+    const rightOut = instBuffer.getChannelData(1);
+    for (let i = 0; i < length; i++) {
+      leftOut[i] = monoIn[i];
+      rightOut[i] = monoIn[i];
+    }
+  }
+  
+  const wavBlob = bufferToWav(instBuffer);
+  tempCtx.close();
+  return wavBlob;
+}
+
 function getAudioUrl(fileObj) {
   if (!fileObj) {
     if (audio && audio.src && !audio.src.includes('soundhelix.com') && audio.src !== '') {
@@ -3029,7 +3119,7 @@ let state = {
   instrumentalVolume: 80,
   duetRouting: 'split', // 'split' (L/R channels) or 'mono' (merged)
   tickerSpeed: 130,     // continuous scroll speed in px/s
-  audioVoiceEnabled: false,
+  audioVoiceEnabled: true,
   lyric1Enabled: true,
   lyric2Enabled: true,
   overlaysEnabled: true,
@@ -8991,48 +9081,100 @@ function setupFrontPageEventListeners() {
 
       if (frontAudioBtn) {
         frontAudioBtn.disabled = true;
-        frontAudioBtn.innerHTML = `⏳ Uploading...`;
+        frontAudioBtn.innerHTML = `⏳ Splitting Audio...`;
       }
       if (frontBtnImport) frontBtnImport.disabled = true;
       if (frontBtnPlay) frontBtnPlay.disabled = true;
 
-      let serverUrl = null;
+      // 1. Automatically generate the instrumental track in browser!
+      logToConsole(`Splitting audio in-browser: ${file.name}`);
+      let instBlob = null;
       try {
-        logToConsole(`Uploading selected file to server: ${file.name}`);
+        instBlob = await generateInstrumental(file);
+        logToConsole(`Successfully split audio and generated instrumental track.`);
+      } catch (splitErr) {
+        logToConsole(`Error splitting audio: ${splitErr.message}. Loading original file directly.`);
+      }
+
+      // 2. Set backing track (instBlob if generated, else the original file)
+      let backingFileObj = instBlob ? new File([instBlob], `${file.name.replace(/\.[^/.]+$/, "")} (Instrumental).wav`, { type: 'audio/wav' }) : file;
+      let vocalsFileObj = file;
+
+      // 3. Stage 1: Upload backing track to server (or fallback to Blob URL)
+      let backingServerUrl = null;
+      try {
+        logToConsole(`Uploading instrumental backing track to server: ${backingFileObj.name}`);
         const response = await fetch('/api/audio-library', {
           method: 'POST',
           headers: {
-            'x-filename': encodeURIComponent(file.name)
+            'x-filename': encodeURIComponent(backingFileObj.name)
           },
-          body: file
+          body: backingFileObj
         });
-        
-        if (!response.ok) {
+        if (response.ok) {
+          const resData = await response.json();
+          backingServerUrl = '/audio_library/' + resData.filename;
+        } else {
           throw new Error(await response.text());
         }
-        
-        const resData = await response.json();
-        serverUrl = '/audio_library/' + resData.filename;
-        logToConsole(`Successfully uploaded song to server: ${resData.filename}`);
       } catch (uploadErr) {
-        logToConsole(`Server upload failed: ${uploadErr.message}. Falling back to client-side Blob URL.`);
-        serverUrl = URL.createObjectURL(file);
+        logToConsole(`Instrumental upload failed: ${uploadErr.message}. Falling back to client-side Blob URL.`);
+        backingServerUrl = URL.createObjectURL(backingFileObj);
       }
-      
+
+      // 4. Stage 2: Upload vocal track to server (or fallback to Blob URL)
+      let vocalsServerUrl = null;
+      try {
+        logToConsole(`Uploading original vocal guide track to server: ${vocalsFileObj.name}`);
+        const response = await fetch('/api/audio-library', {
+          method: 'POST',
+          headers: {
+            'x-filename': encodeURIComponent(vocalsFileObj.name)
+          },
+          body: vocalsFileObj
+        });
+        if (response.ok) {
+          const resData = await response.json();
+          vocalsServerUrl = '/audio_library/' + resData.filename;
+        } else {
+          throw new Error(await response.text());
+        }
+      } catch (uploadErr) {
+        logToConsole(`Original vocal upload failed: ${uploadErr.message}. Falling back to client-side Blob URL.`);
+        vocalsServerUrl = URL.createObjectURL(vocalsFileObj);
+      }
+
+      // 5. Update state
       state.frontAudioFile = {
-        name: file.name,
-        size: file.size,
-        type: file.type,
+        name: backingFileObj.name,
+        size: backingFileObj.size,
+        type: backingFileObj.type,
         isLocalPath: false,
-        serverUrl: serverUrl
+        serverUrl: backingServerUrl
       };
-      
+
+      state.frontVocalsAudioFile = {
+        name: vocalsFileObj.name,
+        size: vocalsFileObj.size,
+        type: vocalsFileObj.type,
+        isLocalPath: false,
+        serverUrl: vocalsServerUrl
+      };
+
+      // Enable UI
       if (frontAudioBtn) {
         frontAudioBtn.disabled = false;
         frontAudioBtn.classList.add('loaded');
       }
       if (frontBtnImport) frontBtnImport.disabled = false;
       if (frontBtnPlay) frontBtnPlay.disabled = false;
+
+      // Update vocal guide track button (Optional separate file step) to reflect it's loaded!
+      const frontVocalsBtn = document.getElementById('front-vocals-btn');
+      if (frontVocalsBtn) {
+        frontVocalsBtn.classList.add('loaded');
+        frontVocalsBtn.innerHTML = `🎙️ Vocals: ${vocalsFileObj.name.replace(/\.[^/.]+$/, "")}`;
+      }
 
       // Guess song name & artist from file name if not already filled
       const baseName = file.name.replace(/\.[^/.]+$/, "");
@@ -9063,9 +9205,9 @@ function setupFrontPageEventListeners() {
         frontAudioBtn.innerHTML = `📁 ${songName}`;
       }
       
-      // Sync audio player to the server URL!
+      // Sync audio player to the Vocals track (Original) since audioVoiceEnabled is true!
       try {
-        window.setAudioSource(serverUrl);
+        window.setAudioSource(vocalsServerUrl);
         audio.loop = false;
         stopPlay(); // reset any previous play status
         logToConsole("Audio URL successfully generated and synced to player.");
@@ -9078,7 +9220,7 @@ function setupFrontPageEventListeners() {
       } else {
         updateSongNameBoxes();
       }
-      logToConsole(`Front Page: Audio file loaded - ${file.name}`);
+      logToConsole(`Front Page: Audio file split and loaded - ${file.name}`);
       runStructureAnalystAgent(file);
     } catch (err) {
       logToConsole(`ERROR in file upload change handler: ${err.message}`);
