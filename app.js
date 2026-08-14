@@ -1510,29 +1510,41 @@ function setupEventListeners() {
     btnStudioAudioReload.addEventListener('click', () => {
       studioAudioReloadInput.click();
     });
-    studioAudioReloadInput.addEventListener('change', (e) => {
+    studioAudioReloadInput.addEventListener('change', async (e) => {
       const file = e.target.files[0];
       if (!file) return;
       
-      logToConsole(`Studio: Reloading audio file - ${file.name}`);
-      const newUrl = URL.createObjectURL(file);
-      window.setAudioSource(newUrl);
-      
-      // Update state configs
-      if (state.config && state.config.config) {
-        state.config.config.audioUrl = newUrl;
+      if (btnStudioAudioReload) {
+        btnStudioAudioReload.disabled = true;
+        btnStudioAudioReload.innerHTML = `⏳ Splitting...`;
       }
       
-      state.frontAudioFile = file;
-      
-      const frontAudioBtn = document.getElementById('front-audio-btn');
-      if (frontAudioBtn) {
-        frontAudioBtn.classList.add('loaded');
-        frontAudioBtn.innerHTML = `📁 Loaded: ${file.name.replace(/\.[^/.]+$/, "")}`;
+      try {
+        logToConsole(`Studio: Reloading audio file - ${file.name}`);
+        await window.processAndLoadAudioFile(file);
+        
+        const frontAudioBtn = document.getElementById('front-audio-btn');
+        if (frontAudioBtn) {
+          frontAudioBtn.classList.add('loaded');
+          frontAudioBtn.innerHTML = `📁 Loaded: ${file.name.replace(/\.[^/.]+$/, "")}`;
+        }
+        
+        // Update vocal guide track button to reflect it's loaded!
+        const frontVocalsBtn = document.getElementById('front-vocals-btn');
+        if (frontVocalsBtn) {
+          frontVocalsBtn.classList.add('loaded');
+          frontVocalsBtn.innerHTML = `🎙️ Vocals: ${file.name.replace(/\.[^/.]+$/, "")}`;
+        }
+        
+        alert(`Audio file "${file.name}" loaded and split successfully!`);
+      } catch (err) {
+        alert("Reload audio failed: " + err.message);
+      } finally {
+        if (btnStudioAudioReload) {
+          btnStudioAudioReload.disabled = false;
+          btnStudioAudioReload.innerHTML = `📁 Reload Audio`;
+        }
       }
-      
-      if (typeof saveActiveState === 'function') saveActiveState();
-      alert(`Audio file "${file.name}" loaded successfully!`);
     });
   }
 
@@ -6249,25 +6261,11 @@ function setupFrontPageEventListeners() {
     });
   }
 
-  // Upload MP3 (Click is handled natively by HTML label element linked to file input)
-  frontAudioUpload.addEventListener('change', async (e) => {
+  window.processAndLoadAudioFile = async function(file) {
     try {
-      logToConsole("File upload change event detected.");
-      const file = e.target.files[0];
-      if (!file) {
-        logToConsole("No file selected.");
-        return;
-      }
-
-      if (frontAudioBtn) {
-        frontAudioBtn.disabled = true;
-        frontAudioBtn.innerHTML = `⏳ Splitting Audio...`;
-      }
-      if (frontBtnImport) frontBtnImport.disabled = true;
-      if (frontBtnPlay) frontBtnPlay.disabled = true;
-
+      logToConsole(`Processing audio file: ${file.name}`);
+      
       // 1. Automatically generate the instrumental track in browser!
-      logToConsole(`Splitting audio in-browser: ${file.name}`);
       let instBlob = null;
       try {
         instBlob = await generateInstrumental(file);
@@ -6341,10 +6339,54 @@ function setupFrontPageEventListeners() {
         serverUrl: vocalsServerUrl
       };
 
+      // Update config audioUrl if present
+      if (state.config && state.config.config) {
+        state.config.config.audioUrl = backingServerUrl;
+      }
+
+      // Sync audio player to the Vocals track (Original) since audioVoiceEnabled is true!
+      try {
+        window.setAudioSource(vocalsServerUrl);
+        audio.loop = false;
+        stopPlay(); // reset any previous play status
+        logToConsole("Audio URL successfully generated and synced to player.");
+      } catch (audioErr) {
+        logToConsole(`Audio URL syncing warning: ${audioErr.message}`);
+      }
+
+      if (typeof saveActiveState === 'function') saveActiveState();
+
+      return { backingServerUrl, vocalsServerUrl };
+    } catch (err) {
+      logToConsole(`Error inside processAndLoadAudioFile: ${err.message}`);
+      throw err;
+    }
+  };
+
+  // Upload MP3 (Click is handled natively by HTML label element linked to file input)
+  frontAudioUpload.addEventListener('change', async (e) => {
+    try {
+      logToConsole("File upload change event detected.");
+      const file = e.target.files[0];
+      if (!file) {
+        logToConsole("No file selected.");
+        return;
+      }
+
+      if (frontAudioBtn) {
+        frontAudioBtn.disabled = true;
+        frontAudioBtn.innerHTML = `⏳ Splitting Audio...`;
+      }
+      if (frontBtnImport) frontBtnImport.disabled = true;
+      if (frontBtnPlay) frontBtnPlay.disabled = true;
+
+      await window.processAndLoadAudioFile(file);
+
       // Enable UI
       if (frontAudioBtn) {
         frontAudioBtn.disabled = false;
         frontAudioBtn.classList.add('loaded');
+        frontAudioBtn.innerHTML = `📁 Loaded: ${file.name.replace(/\.[^/.]+$/, "")}`;
       }
       if (frontBtnImport) frontBtnImport.disabled = false;
       if (frontBtnPlay) frontBtnPlay.disabled = false;
@@ -6353,7 +6395,7 @@ function setupFrontPageEventListeners() {
       const frontVocalsBtn = document.getElementById('front-vocals-btn');
       if (frontVocalsBtn) {
         frontVocalsBtn.classList.add('loaded');
-        frontVocalsBtn.innerHTML = `🎙️ Vocals: ${vocalsFileObj.name.replace(/\.[^/.]+$/, "")}`;
+        frontVocalsBtn.innerHTML = `🎙️ Vocals: ${file.name.replace(/\.[^/.]+$/, "")}`;
       }
 
       // Guess song name & artist from file name if not already filled
@@ -6383,16 +6425,6 @@ function setupFrontPageEventListeners() {
       // Show clean song name on button
       if (frontAudioBtn) {
         frontAudioBtn.innerHTML = `📁 ${songName}`;
-      }
-      
-      // Sync audio player to the Vocals track (Original) since audioVoiceEnabled is true!
-      try {
-        window.setAudioSource(vocalsServerUrl);
-        audio.loop = false;
-        stopPlay(); // reset any previous play status
-        logToConsole("Audio URL successfully generated and synced to player.");
-      } catch (audioErr) {
-        logToConsole(`Audio URL syncing warning: ${audioErr.message}`);
       }
       
       if (hasChangedName) {
