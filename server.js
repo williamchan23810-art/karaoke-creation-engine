@@ -7,6 +7,174 @@ const path = require('path');
 const PORT = 3005;
 const PUBLIC_DIR = __dirname;
 
+function hexToAssColor(hex) {
+  if (!hex) return '&H00FFFFFF';
+  let cleanHex = hex.replace('#', '');
+  if (cleanHex.length === 3) {
+    cleanHex = cleanHex.split('').map(c => c + c).join('');
+  }
+  if (cleanHex.length !== 6) return '&H00FFFFFF';
+  const r = cleanHex.substring(0, 2);
+  const g = cleanHex.substring(2, 4);
+  const b = cleanHex.substring(4, 6);
+  return `&H00${b}${g}${r}`;
+}
+
+function generateAssSubtitles(config) {
+  const metadata = config.metadata || {};
+  const sysConfig = config.config || {};
+  const lyrics = config.lyrics || [];
+  const overlays = config.overlays || [];
+  
+  const fontFamily = sysConfig.fontFamily || 'Arial';
+  
+  // Convert colors
+  const unsungAss = '&H00FFFFFF'; // White
+  const leadAss = hexToAssColor(sysConfig.fontColor || '#06b6d4');
+  const duetAss = hexToAssColor('#ff7b00');
+  const duetA_Ass = hexToAssColor('#ff2a85');
+  const duetB_Ass = hexToAssColor('#ff7f50');
+
+  let assContent = `[Script Info]
+Title: Karaoke Video - ${metadata.songName || 'Song'}
+ScriptType: v4.00+
+WrapStyle: 0
+PlayResX: 1280
+PlayResY: 720
+ScaledBorderAndShadow: yes
+
+[V4+ Styles]
+Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
+Style: Default,${fontFamily},44,${unsungAss},${leadAss},&H00000000,&H00000000,1,0,0,0,100,100,0,0,1,4,0,2,10,10,120,1
+Style: Lead,${fontFamily},44,${unsungAss},${leadAss},&H00000000,&H00000000,1,0,0,0,100,100,0,0,1,4,0,2,10,10,120,1
+Style: Duet,${fontFamily},44,${unsungAss},${duetAss},&H00000000,&H00000000,1,0,0,0,100,100,0,0,1,4,0,2,10,10,120,1
+Style: DuetA,${fontFamily},44,${unsungAss},${duetA_Ass},&H00000000,&H00000000,1,0,0,0,100,100,0,0,1,4,0,2,10,10,120,1
+Style: DuetB,${fontFamily},44,${unsungAss},${duetB_Ass},&H00000000,&H00000000,1,0,0,0,100,100,0,0,1,4,0,2,10,10,120,1
+Style: OverlayText,${fontFamily},26,&H00FFFFFF,&H00FFFFFF,&H00000000,&H00000000,1,0,0,0,100,100,0,0,1,3,0,5,10,10,10,1
+Style: TitleCard,${fontFamily},46,&H00FFFFFF,&H00FFFFFF,&H00000000,&H00000000,1,0,0,0,100,100,0,0,1,4,0,5,10,10,10,1
+
+[Events]
+Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
+`;
+
+  const formatTime = (seconds) => {
+    if (isNaN(seconds) || seconds < 0) seconds = 0;
+    const h = Math.floor(seconds / 3600);
+    const m = Math.floor((seconds % 3600) / 60);
+    const s = Math.floor(seconds % 60);
+    const cs = Math.floor((seconds % 1) * 100);
+    return `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}.${cs.toString().padStart(2, '0')}`;
+  };
+
+  const escapeAssText = (text) => {
+    return (text || '')
+      .replace(/\\/g, '\\\\')
+      .replace(/[{}]/g, '')
+      .replace(/\n/g, '\\N');
+  };
+
+  // 1. Add Lyrics
+  const sortedLines = [...lyrics].sort((a, b) => {
+    const aStart = a.words && a.words[0] ? a.words[0].startTime : 0;
+    const bStart = b.words && b.words[0] ? b.words[0].startTime : 0;
+    return aStart - bStart;
+  });
+
+  sortedLines.forEach(line => {
+    if (!line.words || line.words.length === 0) return;
+
+    const lineStart = line.words[0].startTime;
+    const lineEnd = line.words[line.words.length - 1].endTime;
+
+    const dialogueStart = Math.max(0, lineStart - 0.5);
+    const dialogueEnd = lineEnd + 1.0;
+
+    const startStr = formatTime(dialogueStart);
+    const endStr = formatTime(dialogueEnd);
+
+    const fadeTag = `{\\fad(500,500)}`;
+
+    let speakerStyle = 'Lead';
+    if (line.speaker === 'duet') speakerStyle = 'Duet';
+    else if (line.speaker === 'duet_a') speakerStyle = 'DuetA';
+    else if (line.speaker === 'duet_b') speakerStyle = 'DuetB';
+
+    const isDuet = line.speaker === 'duet' || line.speaker === 'duet_a' || line.speaker === 'duet_b';
+    const marginV = isDuet ? 520 : 120;
+
+    let textAss = fadeTag;
+    let lastTime = dialogueStart;
+
+    line.words.forEach((wObj, idx) => {
+      const gap = wObj.startTime - lastTime;
+      if (gap > 0.01) {
+        const gapCs = Math.round(gap * 100);
+        textAss += `{\\kf${gapCs}} `;
+      }
+      
+      const durationCs = Math.round((wObj.endTime - wObj.startTime) * 100);
+      const cleanWord = wObj.word.replace(/[{}]/g, '');
+      textAss += `{\\kf${durationCs}}${cleanWord} `;
+      lastTime = wObj.endTime;
+    });
+
+    assContent += `Dialogue: 1,${startStr},${endStr},${speakerStyle},,0,0,${marginV},,${textAss.trim()}\n`;
+  });
+
+  // 2. Add Overlays
+  overlays.forEach(ov => {
+    if (ov.startTime >= ov.endTime) return;
+    const startStr = formatTime(ov.startTime);
+    const endStr = formatTime(ov.endTime);
+
+    if (ov.type === 'text') {
+      const cleanText = escapeAssText(ov.content || ov.text || '');
+      const oWidth = ov.width || 600;
+      const oHeight = ov.height || 80;
+      const oX = ov.x !== undefined ? ov.x : (1280 - oWidth) / 2;
+      const oY = ov.y !== undefined ? ov.y : 110;
+      
+      const centerX = Math.round(oX + oWidth / 2);
+      const centerY = Math.round(oY + oHeight / 2);
+
+      const colorHex = hexToAssColor(ov.fontColor || '#f97316');
+      const fontSize = ov.fontSize || 24;
+      const fontFam = ov.fontFamily || fontFamily;
+
+      let alphaTag = '';
+      if (ov.opacity !== undefined) {
+        const alphaHex = Math.min(255, Math.max(0, 255 - Math.round(ov.opacity * 255))).toString(16).padStart(2, '0').toUpperCase();
+        alphaTag = `\\1a&H${alphaHex}&`;
+      }
+      let shadowTag = '';
+      if (ov.shadow !== undefined) {
+        shadowTag = `\\shad${ov.shadow}`;
+      }
+      let fadTag = '\\fad(300,300)';
+      if (ov.transition === 'none') {
+        fadTag = '';
+      }
+
+      const posTag = `{\\pos(${centerX},${centerY})\\fs${fontSize}\\fn${fontFam}\\c${colorHex}${alphaTag}${shadowTag}${fadTag}}`;
+      assContent += `Dialogue: 2,${startStr},${endStr},OverlayText,,0,0,0,,${posTag}${cleanText}\n`;
+    } else if (ov.type === 'title-card') {
+      const cleanText = escapeAssText(ov.text || '');
+      const oWidth = ov.width || 640;
+      const oHeight = ov.height || 170;
+      const oX = ov.x !== undefined ? ov.x : (1280 - oWidth) / 2;
+      const oY = ov.y !== undefined ? ov.y : 720 / 2 - 85;
+
+      const centerX = Math.round(oX + oWidth / 2);
+      const centerY = Math.round(oY + oHeight / 2);
+
+      const posTag = `{\\pos(${centerX},${centerY})\\fad(800,800)}`;
+      assContent += `Dialogue: 2,${startStr},${endStr},TitleCard,,0,0,0,,${posTag}${cleanText}\n`;
+    }
+  });
+
+  return assContent;
+}
+
 const MIME_TYPES = {
   '.html': 'text/html',
   '.css': 'text/css',
@@ -108,8 +276,18 @@ const server = http.createServer((req, res) => {
       const targetDir = path.join(PUBLIC_DIR, 'audio_library');
       if (fs.existsSync(targetDir)) {
         const files = fs.readdirSync(targetDir);
+        const keepDecoded = decodeURIComponent(keep || '');
+        const songBase = keepDecoded.replace(' (Instrumental)', '').replace(/\.[^/.]+$/, '').trim();
+        
         files.forEach(file => {
-          if (file !== keep && decodeURIComponent(file) !== keep && decodeURIComponent(file) !== decodeURIComponent(keep || '')) {
+          const fileDecoded = decodeURIComponent(file);
+          // Keep if it matches/contains the keep parameter, or contains the base song name
+          const isKeep = file === keep || 
+                         fileDecoded === keepDecoded || 
+                         fileDecoded.includes(keepDecoded) || 
+                         (songBase && fileDecoded.includes(songBase));
+                         
+          if (!isKeep) {
             try {
               fs.unlinkSync(path.join(targetDir, file));
             } catch (e) {
@@ -168,16 +346,6 @@ const server = http.createServer((req, res) => {
       const targetDir = path.join(PUBLIC_DIR, 'audio_library');
       if (!fs.existsSync(targetDir)) {
         fs.mkdirSync(targetDir, { recursive: true });
-      } else {
-        // Enforce ONE SONG system: clear any other files in audio_library before writing
-        const existingFiles = fs.readdirSync(targetDir);
-        existingFiles.forEach(file => {
-          try {
-            fs.unlinkSync(path.join(targetDir, file));
-          } catch (e) {
-            console.error(`Failed to clear old audio file ${file}:`, e);
-          }
-        });
       }
       const baseExt = path.extname(safeFilename);
       const baseName = path.basename(safeFilename, baseExt);
@@ -194,7 +362,7 @@ const server = http.createServer((req, res) => {
       });
 
       req.pipe(writeStream);
-      req.on('end', () => {
+      writeStream.on('finish', () => {
         res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
         res.end(JSON.stringify({ success: true, filename: uniqueFilename }));
       });
@@ -289,7 +457,7 @@ const server = http.createServer((req, res) => {
       });
 
       req.pipe(writeStream);
-      req.on('end', () => {
+      writeStream.on('finish', () => {
         res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
         res.end(JSON.stringify({ success: true, filename: uniqueFilename }));
       });
@@ -325,7 +493,18 @@ const server = http.createServer((req, res) => {
         const songNameClean = (config.metadata?.songName || 'song').replace(/[^a-zA-Z0-9]/g, '_');
         const backingFileName = config.config.audioUrl ? config.config.audioUrl.split('/').pop() : '';
         const vocalsFileName = data.vocalsUrl ? data.vocalsUrl.split('/').pop() : backingFileName;
-        const bgFileName = config.config.bgUrl ? config.config.bgUrl.split('/').pop() : '';
+        
+        let bgFileName = '';
+        if (config.config.imageBlocks && config.config.imageBlocks.length > 0) {
+          const sortedBlocks = [...config.config.imageBlocks].sort((a, b) => a.startTime - b.startTime);
+          const firstBlock = sortedBlocks[0];
+          if (firstBlock && firstBlock.url) {
+            bgFileName = firstBlock.url.split('/').pop();
+          }
+        }
+        if (!bgFileName && config.config.bgUrl) {
+          bgFileName = config.config.bgUrl.split('/').pop();
+        }
         
         const audioPath = path.join(PUBLIC_DIR, 'audio_library', backingFileName);
         const vocalsPath = path.join(PUBLIC_DIR, 'audio_library', vocalsFileName);
@@ -347,9 +526,10 @@ const server = http.createServer((req, res) => {
         const { spawn } = require('child_process');
         
         // Helper to check if file exists, fallback to placeholder if not
-        const safeBgPath = fs.existsSync(bgPath) ? bgPath : path.join(PUBLIC_DIR, 'watermark.jpg');
-        const safeAudioPath = fs.existsSync(audioPath) ? audioPath : '';
-        const safeVocalsPath = fs.existsSync(vocalsPath) ? vocalsPath : audioPath;
+        const hasBg = bgFileName && fs.existsSync(bgPath) && fs.statSync(bgPath).isFile();
+        const safeBgPath = hasBg ? bgPath : '';
+        const safeAudioPath = (backingFileName && fs.existsSync(audioPath) && fs.statSync(audioPath).isFile()) ? audioPath : '';
+        const safeVocalsPath = (vocalsFileName && fs.existsSync(vocalsPath) && fs.statSync(vocalsPath).isFile()) ? vocalsPath : safeAudioPath;
         
         if (!safeAudioPath) {
           res.writeHead(400, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
@@ -357,25 +537,58 @@ const server = http.createServer((req, res) => {
           return;
         }
         
+        const assFileName = `${songNameClean}_subtitles.ass`;
+        const assPath = path.join(exportDir, assFileName);
+        const assContent = generateAssSubtitles(config);
+        fs.writeFileSync(assPath, assContent, 'utf8');
+        
+        const assEscaped = assPath.replace(/\\/g, '/').replace(/:/g, '\\:');
+ 
         console.log(`Starting background FFmpeg render for ${songNameClean}...`);
         
         // We will run the renders sequentially or concurrently.
         const [width, height] = resolution.split('x');
         
+        const audioMode = data.audioMode || 'vocal-cut';
+        
+        // Determine background input parameters for FFmpeg
+        let videoInput = [];
+        let filterComplex = '';
+        if (hasBg) {
+          videoInput = ['-loop', '1', '-i', safeBgPath];
+          filterComplex = `[1:v]scale=${width}:${height}[v];[v]ass='${assEscaped}'[v_sub]`;
+        } else {
+          // Use solid black generator instead of watermark.jpg
+          videoInput = ['-f', 'lavfi', '-i', `color=c=black:s=${width}x${height}:r=25`];
+          filterComplex = `[1:v]ass='${assEscaped}'[v_sub]`;
+        }
+ 
+        // Determine audio extraction filters for Karaoke version
+        const audioFilters = [];
+        if (audioMode === 'vocal-cut') {
+          audioFilters.push('pan=stereo|c0=c0-c1|c1=c1-c0');
+        } else if (audioMode === 'multiplex') {
+          audioFilters.push('pan=stereo|c0=c0|c1=c0');
+        }
+ 
         // Spawn Karaoke Render
         const argsKaraoke = [
           '-y',
           '-i', safeAudioPath,
-          '-loop', '1',
-          '-i', safeBgPath,
-          '-filter_complex', `[1:v]scale=${width}:${height},zoompan=z='zoom+0.0005':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=18000[v]`,
-          '-map', '[v]',
-          '-map', '0:a',
+          ...videoInput,
+          '-filter_complex', filterComplex,
+          '-map', '[v_sub]',
+          '-map', '0:a'
+        ];
+        if (audioFilters.length > 0) {
+          argsKaraoke.push('-af', audioFilters.join(','));
+        }
+        argsKaraoke.push(
           '-c:v', 'libx264',
           '-pix_fmt', 'yuv420p',
           '-shortest',
           outKaraokePath
-        ];
+        );
         
         console.log("FFmpeg path:", ffmpegPath);
         console.log("FFmpeg Karaoke args:", argsKaraoke.join(' '));
@@ -385,14 +598,13 @@ const server = http.createServer((req, res) => {
         ffmpegKaraoke.on('close', (code1) => {
           console.log(`FFmpeg Karaoke finished with code ${code1}`);
           
-          // Spawn Original Vocals Render
+          // Spawn Original Vocals Render (always plays original vocals, uses videoInput)
           const argsOriginal = [
             '-y',
             '-i', safeVocalsPath,
-            '-loop', '1',
-            '-i', safeBgPath,
-            '-filter_complex', `[1:v]scale=${width}:${height},zoompan=z='zoom+0.0005':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=18000[v]`,
-            '-map', '[v]',
+            ...videoInput,
+            '-filter_complex', filterComplex,
+            '-map', '[v_sub]',
             '-map', '0:a',
             '-c:v', 'libx264',
             '-pix_fmt', 'yuv420p',

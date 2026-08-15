@@ -274,10 +274,28 @@ async function generateInstrumental(file) {
     const leftOut = instBuffer.getChannelData(0);
     const rightOut = instBuffer.getChannelData(1);
     
-    for (let i = 0; i < length; i++) {
-      const val = leftIn[i] - rightIn[i];
-      leftOut[i] = val;
-      rightOut[i] = -val;
+    // Check if channels are identical (mono in disguise)
+    let isIdentical = true;
+    const step = Math.max(1, Math.floor(length / 1000));
+    for (let i = 0; i < length; i += step) {
+      if (Math.abs(leftIn[i] - rightIn[i]) > 0.001) {
+        isIdentical = false;
+        break;
+      }
+    }
+    
+    if (isIdentical) {
+      logToConsole("Audio check: Channels are identical (mono in disguise). Phase cancellation skipped to prevent silence.");
+      for (let i = 0; i < length; i++) {
+        leftOut[i] = leftIn[i];
+        rightOut[i] = rightIn[i];
+      }
+    } else {
+      for (let i = 0; i < length; i++) {
+        const val = leftIn[i] - rightIn[i];
+        leftOut[i] = val;
+        rightOut[i] = -val;
+      }
     }
   } else {
     const monoIn = audioBuffer.getChannelData(0);
@@ -432,8 +450,6 @@ const creationSongNameBox = document.getElementById('creation-song-name-box');
 const displayProjectName = document.getElementById('display-project-name');
 const btnSaveProject = document.getElementById('btn-save-project');
 const btnExportTop = document.getElementById('btn-export-top');
-const btnStudioAudioReload = document.getElementById('btn-studio-audio-reload');
-const studioAudioReloadInput = document.getElementById('studio-audio-reload-input');
 const bgTrackBlock = document.getElementById('bg-track-block');
 const tickerTrackBlock = document.getElementById('ticker-track-block');
 const navItems = document.querySelectorAll('.sidebar-nav .nav-item');
@@ -558,7 +574,7 @@ window.setupAudioNodes = function() {
 
 window.updateAudioRouting = function() {
   // If we have separate audio tracks uploaded
-  if (state.frontAudioFile && state.frontVocalsAudioFile) {
+  if (state.frontAudioFile && state.frontVocalsAudioFile && state.frontAudioFile.serverUrl !== state.frontVocalsAudioFile.serverUrl) {
     const targetTrack = state.audioVoiceEnabled ? state.frontVocalsAudioFile : state.frontAudioFile;
     if (targetTrack && targetTrack.serverUrl) {
       const currentSrc = audio.src || '';
@@ -1505,48 +1521,7 @@ function setupEventListeners() {
     });
   }
 
-  // Reload MP3 button wire-up
-  if (btnStudioAudioReload && studioAudioReloadInput) {
-    btnStudioAudioReload.addEventListener('click', () => {
-      studioAudioReloadInput.click();
-    });
-    studioAudioReloadInput.addEventListener('change', async (e) => {
-      const file = e.target.files[0];
-      if (!file) return;
-      
-      if (btnStudioAudioReload) {
-        btnStudioAudioReload.disabled = true;
-        btnStudioAudioReload.innerHTML = `⏳ Splitting...`;
-      }
-      
-      try {
-        logToConsole(`Studio: Reloading audio file - ${file.name}`);
-        await window.processAndLoadAudioFile(file);
-        
-        const frontAudioBtn = document.getElementById('front-audio-btn');
-        if (frontAudioBtn) {
-          frontAudioBtn.classList.add('loaded');
-          frontAudioBtn.innerHTML = `📁 Loaded: ${file.name.replace(/\.[^/.]+$/, "")}`;
-        }
-        
-        // Update vocal guide track button to reflect it's loaded!
-        const frontVocalsBtn = document.getElementById('front-vocals-btn');
-        if (frontVocalsBtn) {
-          frontVocalsBtn.classList.add('loaded');
-          frontVocalsBtn.innerHTML = `🎙️ Vocals: ${file.name.replace(/\.[^/.]+$/, "")}`;
-        }
-        
-        alert(`Audio file "${file.name}" loaded and split successfully!`);
-      } catch (err) {
-        alert("Reload audio failed: " + err.message);
-      } finally {
-        if (btnStudioAudioReload) {
-          btnStudioAudioReload.disabled = false;
-          btnStudioAudioReload.innerHTML = `📁 Reload Audio`;
-        }
-      }
-    });
-  }
+  // Reload MP3 button removed
 
   // --- Media Library (Images & Songs Tabs) ---
   const tabMediaImages = document.getElementById('tab-media-images');
@@ -3392,14 +3367,25 @@ function setupImageBlockDragging(blockDiv, leftHandle, rightHandle, blockIdx) {
     if (diagHold) diagHold.innerText = `${(block.endTime - block.startTime).toFixed(2)}s`;
   };
   
-  const onMouseUp = () => {
+  const onMouseUp = (e) => {
     isDragging = false;
     document.removeEventListener('mousemove', onMouseMove);
     document.removeEventListener('mouseup', onMouseUp);
     
+    const overlayImgWorkspace = document.getElementById('image-overlay-workspace');
+    if (overlayImgWorkspace) {
+      const rect = overlayImgWorkspace.getBoundingClientRect();
+      if (e.clientY >= rect.top && e.clientY <= rect.bottom) {
+        window.moveBlockBetweenTracks('background', blockIdx, 'image');
+        return;
+      }
+    }
+    
     const block = state.config.config.imageBlocks[blockIdx];
-    block.startTime = Math.round(block.startTime * 100) / 100;
-    block.endTime = Math.round(block.endTime * 100) / 100;
+    if (block) {
+      block.startTime = Math.round(block.startTime * 100) / 100;
+      block.endTime = Math.round(block.endTime * 100) / 100;
+    }
     
     updateTimeline();
   };
@@ -3471,14 +3457,25 @@ function setupOverlayImageBlockDragging(blockDiv, leftHandle, rightHandle, block
     if (diagHold) diagHold.innerText = `${(block.endTime - block.startTime).toFixed(2)}s`;
   };
   
-  const onMouseUp = () => {
+  const onMouseUp = (e) => {
     isDragging = false;
     document.removeEventListener('mousemove', onMouseMove);
     document.removeEventListener('mouseup', onMouseUp);
     
+    const imageWorkspace = document.getElementById('image-workspace');
+    if (imageWorkspace) {
+      const rect = imageWorkspace.getBoundingClientRect();
+      if (e.clientY >= rect.top && e.clientY <= rect.bottom) {
+        window.moveBlockBetweenTracks('image', blockIdx, 'background');
+        return;
+      }
+    }
+    
     const block = state.config.config.overlayImages[blockIdx];
-    block.startTime = Math.round(block.startTime * 100) / 100;
-    block.endTime = Math.round(block.endTime * 100) / 100;
+    if (block) {
+      block.startTime = Math.round(block.startTime * 100) / 100;
+      block.endTime = Math.round(block.endTime * 100) / 100;
+    }
     
     updateTimeline();
   };
@@ -4485,7 +4482,7 @@ function drawKaraokeFrame(time) {
   
   ctx.clearRect(0, 0, w, h);
 
-  // Auto-sync Quick Text Overlay inputs
+  // Auto-sync Fonts & Styles inputs to the active text overlay
   if (state.config && state.config.overlays) {
     const activeTextOverlay = state.config.overlays.find(o => o.type === 'text' && time >= o.startTime && time <= o.endTime);
     if (activeTextOverlay) {
@@ -4495,38 +4492,44 @@ function drawKaraokeFrame(time) {
         state.selectedItemIndex = activeIdx;
         
         // Populate inputs
-        const studioQuickMsgInput = document.getElementById('studio-quick-msg-input');
-        const studioQuickMsgFont = document.getElementById('studio-quick-msg-font');
-        const studioQuickMsgSize = document.getElementById('studio-quick-msg-size');
-        const studioQuickMsgColor = document.getElementById('studio-quick-msg-color');
-        const studioQuickMsgTransparent = document.getElementById('studio-quick-msg-transparent');
+        const studioTitleInput = document.getElementById('studio-title-input');
+        const studioFontSelector = document.getElementById('studio-font-selector');
+        const studioFontSize = document.getElementById('studio-font-size');
+        const fontColorPicker = document.getElementById('studio-font-color-picker');
+        const studioFontOpacity = document.getElementById('studio-font-opacity');
+        const studioFontShadow = document.getElementById('studio-font-shadow');
+        const studioTitleTransition = document.getElementById('studio-title-transition');
 
-        if (studioQuickMsgInput && document.activeElement !== studioQuickMsgInput) {
-          studioQuickMsgInput.value = activeTextOverlay.text || activeTextOverlay.content || '';
+        if (studioTitleInput && document.activeElement !== studioTitleInput) {
+          studioTitleInput.value = activeTextOverlay.text || activeTextOverlay.content || '';
         }
-        if (studioQuickMsgFont && activeTextOverlay.fontFamily) {
-          studioQuickMsgFont.value = activeTextOverlay.fontFamily;
+        if (studioFontSelector && activeTextOverlay.fontFamily) {
+          studioFontSelector.value = activeTextOverlay.fontFamily;
         }
-        if (studioQuickMsgSize && activeTextOverlay.fontSize) {
-          studioQuickMsgSize.value = activeTextOverlay.fontSize;
+        if (studioFontSize && activeTextOverlay.fontSize) {
+          studioFontSize.value = activeTextOverlay.fontSize;
         }
-        if (studioQuickMsgColor && activeTextOverlay.fontColor) {
-          studioQuickMsgColor.value = activeTextOverlay.fontColor;
+        if (fontColorPicker && activeTextOverlay.fontColor) {
+          fontColorPicker.value = activeTextOverlay.fontColor;
         }
-        if (studioQuickMsgTransparent) {
-          studioQuickMsgTransparent.checked = (activeTextOverlay.transparentBox !== false && activeTextOverlay.transparentBox !== 'false');
+        if (studioFontOpacity && activeTextOverlay.opacity !== undefined) {
+          studioFontOpacity.value = Math.round(activeTextOverlay.opacity * 100);
+        }
+        if (studioFontShadow && activeTextOverlay.shadow !== undefined) {
+          studioFontShadow.value = activeTextOverlay.shadow;
+        }
+        if (studioTitleTransition && activeTextOverlay.transition) {
+          studioTitleTransition.value = activeTextOverlay.transition;
         }
       }
     } else {
-      // Clear inputs if playhead moves out of range, but only if the user is not actively typing
-      const studioQuickMsgInput = document.getElementById('studio-quick-msg-input');
-      if (studioQuickMsgInput && document.activeElement !== studioQuickMsgInput) {
-        if (studioQuickMsgInput.value !== '') {
-          studioQuickMsgInput.value = '';
-          if (state.selectedItemType === 'overlay') {
-            state.selectedItemType = null;
-            state.selectedItemIndex = null;
-          }
+      // Clear or reset to default title if playhead moves out of range, only if not typing
+      const studioTitleInput = document.getElementById('studio-title-input');
+      if (studioTitleInput && document.activeElement !== studioTitleInput) {
+        if (state.selectedItemType === 'overlay') {
+          state.selectedItemType = null;
+          state.selectedItemIndex = null;
+          studioTitleInput.value = (state.config && state.config.metadata && state.config.metadata.songName) || '';
         }
       }
     }
@@ -5077,6 +5080,8 @@ function drawKaraokeFrame(time) {
           if (ov.height === undefined) ov.height = 80;
           
           const isBoxTransparent = ov.transparentBox !== false && ov.transparentBox !== 'false';
+          ctx.save();
+          if (ov.opacity !== undefined) ctx.globalAlpha = ov.opacity;
           ctx.fillStyle = isBoxTransparent ? 'rgba(0, 0, 0, 0)' : 'rgba(15, 23, 42, 0.85)';
           ctx.strokeStyle = isBoxTransparent ? 'rgba(0, 0, 0, 0)' : 'rgba(249, 115, 22, 0.4)';
           ctx.lineWidth = 1.5;
@@ -5084,6 +5089,14 @@ function drawKaraokeFrame(time) {
           ctx.roundRect(ov.x, ov.y, ov.width, ov.height, 6);
           ctx.fill();
           ctx.stroke();
+          ctx.restore();
+          
+          ctx.save();
+          if (ov.opacity !== undefined) ctx.globalAlpha = ov.opacity;
+          if (ov.shadow !== undefined && ov.shadow > 0) {
+            ctx.shadowColor = 'rgba(0, 0, 0, 0.7)';
+            ctx.shadowBlur = ov.shadow;
+          }
           
           ctx.fillStyle = ov.fontColor || '#f97316';
           const fontFam = ov.fontFamily || 'system-ui';
@@ -5093,7 +5106,7 @@ function drawKaraokeFrame(time) {
           ctx.textBaseline = 'middle';
           
           // Scrub any legacy megaphone icon prefix from rendering
-          let cleanContent = ov.content || "";
+          let cleanContent = ov.content || ov.text || "";
           if (cleanContent.startsWith('📢 ')) {
             cleanContent = cleanContent.substring(2);
           }
@@ -5105,6 +5118,7 @@ function drawKaraokeFrame(time) {
           } else {
             ctx.fillText(lines[0], ov.x + ov.width/2, ov.y + ov.height/2);
           }
+          ctx.restore();
           
           if (state.selectedItemType === 'overlay' && state.selectedItemIndex === ovIdx) {
             ctx.save();
@@ -5422,13 +5436,6 @@ function logToConsole(message) {
 
 // --- Export & Queue management ---
 function handleExport() {
-  // Clean up server libraries on export (keep only active song and main bg image)
-  const currentAudioName = state.frontAudioFile ? state.frontAudioFile.name : '';
-  const currentBgName = state.config?.config?.bgUrl ? state.config.config.bgUrl.split('/').pop() : '';
-  fetch(`/api/audio-library/cleanup?keep=${encodeURIComponent(currentAudioName)}`)
-    .then(() => fetch(`/api/image-library/cleanup?keep=${encodeURIComponent(currentBgName)}`))
-    .catch(err => console.error("Server files cleanup on export failed:", err));
-
   const res = selectResolution ? selectResolution.value : '1920x1080';
   const queueId = `Render-${Math.floor(Math.random() * 9000 + 1000)}`;
   
@@ -5500,6 +5507,8 @@ function handleExport() {
 
   // Send render request to server
   const vocalsUrl = state.frontVocalsAudioFile ? state.frontVocalsAudioFile.serverUrl : '';
+  const audioModeSelector = document.getElementById('audio-mode-selector');
+  const audioMode = audioModeSelector ? audioModeSelector.value : 'vocal-cut';
   
   fetch('/api/render', {
     method: 'POST',
@@ -5509,7 +5518,8 @@ function handleExport() {
     body: JSON.stringify({
       config: state.config,
       resolution: res,
-      vocalsUrl: vocalsUrl
+      vocalsUrl: vocalsUrl,
+      audioMode: audioMode
     })
   })
   .then(response => {
@@ -6265,88 +6275,53 @@ function setupFrontPageEventListeners() {
     try {
       logToConsole(`Processing audio file: ${file.name}`);
       
-      // 1. Automatically generate the instrumental track in browser!
-      let instBlob = null;
+      // Upload original audio track to server
+      let originalServerUrl = null;
       try {
-        instBlob = await generateInstrumental(file);
-        logToConsole(`Successfully split audio and generated instrumental track.`);
-      } catch (splitErr) {
-        logToConsole(`Error splitting audio: ${splitErr.message}. Loading original file directly.`);
-      }
-
-      // 2. Set backing track (instBlob if generated, else the original file)
-      let backingFileObj = instBlob ? new File([instBlob], `${file.name.replace(/\.[^/.]+$/, "")} (Instrumental).wav`, { type: 'audio/wav' }) : file;
-      let vocalsFileObj = file;
-
-      // 3. Stage 1: Upload backing track to server (or fallback to Blob URL)
-      let backingServerUrl = null;
-      try {
-        logToConsole(`Uploading instrumental backing track to server: ${backingFileObj.name}`);
+        logToConsole(`Uploading original audio track to server: ${file.name}`);
         const response = await fetch('/api/audio-library', {
           method: 'POST',
           headers: {
-            'x-filename': encodeURIComponent(backingFileObj.name)
+            'x-filename': encodeURIComponent(file.name)
           },
-          body: backingFileObj
+          body: file
         });
         if (response.ok) {
           const resData = await response.json();
-          backingServerUrl = '/audio_library/' + resData.filename;
+          originalServerUrl = '/audio_library/' + resData.filename;
         } else {
           throw new Error(await response.text());
         }
       } catch (uploadErr) {
-        logToConsole(`Instrumental upload failed: ${uploadErr.message}. Falling back to client-side Blob URL.`);
-        backingServerUrl = URL.createObjectURL(backingFileObj);
+        logToConsole(`Original audio upload failed: ${uploadErr.message}. Falling back to client-side Blob URL.`);
+        originalServerUrl = URL.createObjectURL(file);
       }
 
-      // 4. Stage 2: Upload vocal track to server (or fallback to Blob URL)
-      let vocalsServerUrl = null;
-      try {
-        logToConsole(`Uploading original vocal guide track to server: ${vocalsFileObj.name}`);
-        const response = await fetch('/api/audio-library', {
-          method: 'POST',
-          headers: {
-            'x-filename': encodeURIComponent(vocalsFileObj.name)
-          },
-          body: vocalsFileObj
-        });
-        if (response.ok) {
-          const resData = await response.json();
-          vocalsServerUrl = '/audio_library/' + resData.filename;
-        } else {
-          throw new Error(await response.text());
-        }
-      } catch (uploadErr) {
-        logToConsole(`Original vocal upload failed: ${uploadErr.message}. Falling back to client-side Blob URL.`);
-        vocalsServerUrl = URL.createObjectURL(vocalsFileObj);
-      }
-
-      // 5. Update state
+      // Update state to use the single original file for both backing and vocals
       state.frontAudioFile = {
-        name: backingFileObj.name,
-        size: backingFileObj.size,
-        type: backingFileObj.type,
+        name: file.name,
+        size: file.size,
+        type: file.type,
         isLocalPath: false,
-        serverUrl: backingServerUrl
+        serverUrl: originalServerUrl
       };
 
       state.frontVocalsAudioFile = {
-        name: vocalsFileObj.name,
-        size: vocalsFileObj.size,
-        type: vocalsFileObj.type,
+        name: file.name,
+        size: file.size,
+        type: file.type,
         isLocalPath: false,
-        serverUrl: vocalsServerUrl
+        serverUrl: originalServerUrl
       };
 
       // Update config audioUrl if present
       if (state.config && state.config.config) {
-        state.config.config.audioUrl = backingServerUrl;
+        state.config.config.audioUrl = originalServerUrl;
       }
 
       // Sync audio player to the Vocals track (Original) since audioVoiceEnabled is true!
       try {
-        window.setAudioSource(vocalsServerUrl);
+        window.setAudioSource(originalServerUrl);
         audio.loop = false;
         stopPlay(); // reset any previous play status
         logToConsole("Audio URL successfully generated and synced to player.");
@@ -6356,7 +6331,7 @@ function setupFrontPageEventListeners() {
 
       if (typeof saveActiveState === 'function') saveActiveState();
 
-      return { backingServerUrl, vocalsServerUrl };
+      return { backingServerUrl: originalServerUrl, vocalsServerUrl: originalServerUrl };
     } catch (err) {
       logToConsole(`Error inside processAndLoadAudioFile: ${err.message}`);
       throw err;
@@ -6682,22 +6657,95 @@ function setupFrontPageEventListeners() {
     const vocalSelection = vocalSelectionEl ? vocalSelectionEl.value : 'solo';
     state.vocalMode = vocalSelection;
     
+    function mergeCorrectedLyrics(newLyricsText, oldLyrics) {
+      const newLines = newLyricsText.split('\n')
+        .map(line => line.trim())
+        .filter(line => line !== '');
+        
+      if (oldLyrics && oldLyrics.length === newLines.length) {
+        return oldLyrics.map((oldLine, lineIdx) => {
+          const newLineText = newLines[lineIdx];
+          const containsChinese = /[\u4e00-\u9fa5]/.test(newLineText);
+          const newWords = containsChinese ? newLineText.split('') : newLineText.split(/\s+/).filter(w => w !== '');
+          
+          const oldWords = oldLine.words || [];
+          if (oldWords.length === newWords.length) {
+            const mergedWords = oldWords.map((oldW, wIdx) => ({
+              ...oldW,
+              word: cleanAndCapitalizeWord(newWords[wIdx])
+            }));
+            return {
+              ...oldLine,
+              words: mergedWords
+            };
+          } else {
+            const lineStart = oldWords.length > 0 ? oldWords[0].startTime : (lineIdx * 4.0);
+            const lineEnd = oldWords.length > 0 ? oldWords[oldWords.length - 1].endTime : (lineStart + 3.0);
+            const duration = lineEnd - lineStart;
+            const step = duration / Math.max(1, newWords.length);
+            
+            const mergedWords = newWords.map((word, wIdx) => ({
+              word: cleanAndCapitalizeWord(word),
+              startTime: lineStart + (wIdx * step),
+              endTime: lineStart + ((wIdx + 1) * step)
+            }));
+            return {
+              ...oldLine,
+              words: mergedWords
+            };
+          }
+        });
+      }
+      return null;
+    }
+
+    const prevConfig = state.config || {};
+    const prevSysConfig = prevConfig.config || {};
+    const prevOverlays = prevConfig.overlays || [];
+    const prevLyrics = prevConfig.lyrics || [];
+
+    let mergedLyrics = null;
+    if (prevLyrics.length > 0) {
+      mergedLyrics = mergeCorrectedLyrics(lyricsText, prevLyrics);
+    }
+
     state.config = {
       metadata: meta,
       config: {
-        bgType: "image",
-        bgUrl: "",
-        bgOverlayOpacity: 0.5,
-        stylePreset: "Cinematic",
-        fontFamily: "Arial",
-        audioFadeOutDuration: 4,
-        audioUrl: getAudioUrl(state.frontAudioFile)
+        bgType: prevSysConfig.bgType || "image",
+        bgUrl: prevSysConfig.bgUrl || "",
+        bgOverlayOpacity: prevSysConfig.bgOverlayOpacity !== undefined ? prevSysConfig.bgOverlayOpacity : 0.5,
+        stylePreset: prevSysConfig.stylePreset || "Cinematic",
+        fontFamily: prevSysConfig.fontFamily || "Arial",
+        fontSize: prevSysConfig.fontSize || 48,
+        fontColor: prevSysConfig.fontColor || '#06b6d4',
+        fontOpacity: prevSysConfig.fontOpacity !== undefined ? prevSysConfig.fontOpacity : 1.0,
+        fontShadow: prevSysConfig.fontShadow !== undefined ? prevSysConfig.fontShadow : 8,
+        titleTransition: prevSysConfig.titleTransition || 'fade',
+        audioFadeOutDuration: prevSysConfig.audioFadeOutDuration !== undefined ? prevSysConfig.audioFadeOutDuration : 4,
+        audioUrl: prevSysConfig.audioUrl || getAudioUrl(state.frontAudioFile),
+        imageBlocks: prevSysConfig.imageBlocks || [
+          {
+            id: 'img_default',
+            name: 'Default Background',
+            url: prevSysConfig.bgUrl || '',
+            startTime: 0,
+            endTime: state.duration
+          }
+        ],
+        overlayImages: prevSysConfig.overlayImages || []
       },
+      overlays: prevOverlays,
       lyrics: []
     };
 
-    // Load lyrics timing
-    alignPastedLyrics(lyricsText);
+    if (mergedLyrics) {
+      state.config.lyrics = mergedLyrics;
+      logToConsole("Lyrics corrected. Preserved existing timings.");
+    } else {
+      // Load lyrics timing
+      alignPastedLyrics(lyricsText);
+    }
 
     // Save bio segments to state
     state.config.tickerSegments = tickerSegments;
@@ -7548,6 +7596,24 @@ function setupStudioPanelControls() {
         saveProjectToDb();
       }
 
+      // Sync timeline state to front page setup inputs
+      if (state.config) {
+        if (state.config.metadata) {
+          const frontSongTitle = document.getElementById('front-song-title');
+          const frontSongArtist = document.getElementById('front-song-artist');
+          if (frontSongTitle) frontSongTitle.value = state.config.metadata.songName || '';
+          if (frontSongArtist) frontSongArtist.value = state.config.metadata.singerBand || '';
+        }
+        const lyricsSelfInput = document.getElementById('lyrics-self-input');
+        if (state.config.lyrics && lyricsSelfInput) {
+          const reconstructedLyrics = state.config.lyrics.map(line => {
+            return (line.words || []).map(w => w.word).join(' ');
+          }).join('\n');
+          lyricsSelfInput.value = reconstructedLyrics;
+          state.frontLyricsText = reconstructedLyrics;
+        }
+      }
+
       // Hide views, Show Project view
       creationPageView.style.display = 'none';
       frontPageView.style.display = 'flex';
@@ -7584,7 +7650,15 @@ function setupStudioPanelControls() {
                                 state.config.metadata.songName === setupTitle && 
                                 state.config.metadata.singerBand === setupArtist;
                                 
-      if (!state.config || !isAlreadyMatching) {
+      const currentLyricsText = state.config && state.config.lyrics ? state.config.lyrics.map(line => {
+        return (line.words || []).map(w => w.word).join(' ');
+      }).join('\n').trim() : '';
+      
+      const lyricsSelfInput = document.getElementById('lyrics-self-input');
+      const newLyricsText = lyricsSelfInput ? lyricsSelfInput.value.trim() : '';
+      const lyricsChanged = currentLyricsText !== newLyricsText;
+      
+      if (!state.config || !isAlreadyMatching || lyricsChanged) {
         // Run transition/initialization first to sync custom files/state
         if (typeof window.transitionToCreationPage === 'function') {
           window.transitionToCreationPage();
@@ -7638,19 +7712,15 @@ function setupStudioPanelControls() {
 
   // --- Right side Master Pop-up Controllers wire-up ---
   const btnPopupMedia = document.getElementById('btn-popup-media');
-  const btnPopupFonts = document.getElementById('btn-popup-fonts');
   const btnPopupOverlays = document.getElementById('btn-popup-overlays');
   
   const popMedia = document.getElementById('popup-container-media');
-  const popFonts = document.getElementById('popup-container-fonts');
   const popOverlays = document.getElementById('popup-container-overlays');
   
   const closeAllPopups = () => {
     if (popMedia) popMedia.style.display = 'none';
-    if (popFonts) popFonts.style.display = 'none';
     if (popOverlays) popOverlays.style.display = 'none';
     if (btnPopupMedia) btnPopupMedia.classList.remove('active');
-    if (btnPopupFonts) btnPopupFonts.classList.remove('active');
     if (btnPopupOverlays) btnPopupOverlays.classList.remove('active');
   };
   
@@ -7662,18 +7732,6 @@ function setupStudioPanelControls() {
       if (!isVisible) {
         popMedia.style.display = 'flex';
         btnPopupMedia.classList.add('active');
-      }
-    });
-  }
-  
-  if (btnPopupFonts) {
-    btnPopupFonts.addEventListener('click', (e) => {
-      e.stopPropagation();
-      const isVisible = popFonts.style.display === 'flex';
-      closeAllPopups();
-      if (!isVisible) {
-        popFonts.style.display = 'flex';
-        btnPopupFonts.classList.add('active');
       }
     });
   }
@@ -7895,22 +7953,66 @@ function setupStudioPanelControls() {
   const studioFontSelector = document.getElementById('studio-font-selector');
   if (studioFontSelector) {
     studioFontSelector.addEventListener('change', (e) => {
-      state.config.config.fontFamily = e.target.value;
+      const val = e.target.value;
+      if (state.selectedItemType === 'overlay' && state.selectedItemIndex !== null && state.config.overlays) {
+        const ov = state.config.overlays[state.selectedItemIndex];
+        if (ov && ov.type === 'text') {
+          ov.fontFamily = val;
+        }
+      } else {
+        state.config.config.fontFamily = val;
+      }
+      state.hasUnsavedConfigChanges = true;
+      if (typeof window.updateSaveButtonColor === 'function') window.updateSaveButtonColor();
+      drawKaraokeFrame(state.currentTime);
       updateTimeline();
-      logToConsole(`Studio Controls: Primary font family updated to "${e.target.value}".`);
+      logToConsole(`Studio Controls: Font family updated to "${val}".`);
     });
   }
 
-  // Font color swatches bindings
+  // Font color picker and swatches bindings
+  const fontColorPicker = document.getElementById('studio-font-color-picker');
+  if (fontColorPicker) {
+    fontColorPicker.addEventListener('input', (e) => {
+      const selectedColor = e.target.value;
+      if (state.selectedItemType === 'overlay' && state.selectedItemIndex !== null && state.config.overlays) {
+        const ov = state.config.overlays[state.selectedItemIndex];
+        if (ov && ov.type === 'text') {
+          ov.fontColor = selectedColor;
+        }
+      } else {
+        state.config.config.fontColor = selectedColor;
+      }
+      document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('active'));
+      logToConsole(`Studio Controls: Accent color updated to ${selectedColor}.`);
+      state.hasUnsavedConfigChanges = true;
+      if (typeof window.updateSaveButtonColor === 'function') window.updateSaveButtonColor();
+      drawKaraokeFrame(state.currentTime);
+      updateTimeline();
+    });
+  }
+
   document.querySelectorAll('.color-swatch').forEach(swatch => {
     swatch.addEventListener('click', (e) => {
       document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('active'));
       swatch.classList.add('active');
       
       const selectedColor = swatch.dataset.color;
-      state.config.config.fontColor = selectedColor;
+      if (state.selectedItemType === 'overlay' && state.selectedItemIndex !== null && state.config.overlays) {
+        const ov = state.config.overlays[state.selectedItemIndex];
+        if (ov && ov.type === 'text') {
+          ov.fontColor = selectedColor;
+        }
+      } else {
+        state.config.config.fontColor = selectedColor;
+      }
       
-      logToConsole(`Studio Controls: Accent sweep color updated to ${selectedColor}.`);
+      if (fontColorPicker) fontColorPicker.value = selectedColor;
+      
+      logToConsole(`Studio Controls: Accent color updated to ${selectedColor}.`);
+      state.hasUnsavedConfigChanges = true;
+      if (typeof window.updateSaveButtonColor === 'function') window.updateSaveButtonColor();
+      drawKaraokeFrame(state.currentTime);
       updateTimeline();
     });
   });
@@ -7922,7 +8024,19 @@ function setupStudioPanelControls() {
     studioFontOpacity.addEventListener('input', (e) => {
       const val = parseInt(e.target.value);
       studioOpacityVal.innerText = val;
-      state.config.config.fontOpacity = val / 100;
+      const floatVal = val / 100;
+      
+      if (state.selectedItemType === 'overlay' && state.selectedItemIndex !== null && state.config.overlays) {
+        const ov = state.config.overlays[state.selectedItemIndex];
+        if (ov && ov.type === 'text') {
+          ov.opacity = floatVal;
+        }
+      } else {
+        state.config.config.fontOpacity = floatVal;
+      }
+      state.hasUnsavedConfigChanges = true;
+      if (typeof window.updateSaveButtonColor === 'function') window.updateSaveButtonColor();
+      drawKaraokeFrame(state.currentTime);
     });
   }
 
@@ -7933,7 +8047,18 @@ function setupStudioPanelControls() {
     studioFontShadow.addEventListener('input', (e) => {
       const val = parseInt(e.target.value);
       studioShadowVal.innerText = val;
-      state.config.config.fontShadow = val;
+      
+      if (state.selectedItemType === 'overlay' && state.selectedItemIndex !== null && state.config.overlays) {
+        const ov = state.config.overlays[state.selectedItemIndex];
+        if (ov && ov.type === 'text') {
+          ov.shadow = val;
+        }
+      } else {
+        state.config.config.fontShadow = val;
+      }
+      state.hasUnsavedConfigChanges = true;
+      if (typeof window.updateSaveButtonColor === 'function') window.updateSaveButtonColor();
+      drawKaraokeFrame(state.currentTime);
     });
   }
 
@@ -7941,91 +8066,106 @@ function setupStudioPanelControls() {
   const studioTitleTransition = document.getElementById('studio-title-transition');
   if (studioTitleTransition) {
     studioTitleTransition.addEventListener('change', (e) => {
-      state.config.config.titleTransition = e.target.value;
-      logToConsole(`Studio Controls: Title Card transition animation configured: ${e.target.value.toUpperCase()}`);
+      const val = e.target.value;
+      if (state.selectedItemType === 'overlay' && state.selectedItemIndex !== null && state.config.overlays) {
+        const ov = state.config.overlays[state.selectedItemIndex];
+        if (ov && ov.type === 'text') {
+          ov.transition = val;
+        }
+      } else {
+        state.config.config.titleTransition = val;
+      }
+      state.hasUnsavedConfigChanges = true;
+      if (typeof window.updateSaveButtonColor === 'function') window.updateSaveButtonColor();
+      drawKaraokeFrame(state.currentTime);
+      logToConsole(`Studio Controls: Transition updated to: ${val.toUpperCase()}`);
     });
   }
 
-  // Live Title and Artist inputs sync
+  // Live Title input sync (single textbox/textarea)
   const studioTitleInput = document.getElementById('studio-title-input');
-  const studioArtistInput = document.getElementById('studio-artist-input');
-  
   if (studioTitleInput) {
     studioTitleInput.addEventListener('input', (e) => {
       const val = e.target.value;
-      if (state.config && state.config.metadata) {
-        state.config.metadata.songName = val;
-        
-        // Sync to setup page input
-        const frontSongTitle = document.getElementById('front-song-title');
-        if (frontSongTitle) frontSongTitle.value = val;
-        if (typeof window.updateSongNameBoxes === 'function') window.updateSongNameBoxes();
-        
-        // Sync default title-card content
-        const tc = (state.config.overlays || []).find(o => o.type === 'title-card');
-        if (tc) {
-          tc.content = `${state.config.metadata.songName} - ${state.config.metadata.singerBand}`;
+      if (state.selectedItemType === 'overlay' && state.selectedItemIndex !== null && state.config.overlays) {
+        const ov = state.config.overlays[state.selectedItemIndex];
+        if (ov && ov.type === 'text') {
+          ov.text = val;
+          ov.content = val;
         }
-        
-        // Update header title if present
-        const displayProjectName = document.getElementById('display-project-name');
-        if (displayProjectName) displayProjectName.innerText = val;
-
-        state.hasUnsavedConfigChanges = true;
-        drawKaraokeFrame(state.currentTime);
-      }
-    });
-  }
-
-  if (studioArtistInput) {
-    studioArtistInput.addEventListener('input', (e) => {
-      const val = e.target.value;
-      if (state.config && state.config.metadata) {
-        state.config.metadata.singerBand = val;
-        
-        // Sync to setup page input
-        const frontSongArtist = document.getElementById('front-song-artist');
-        if (frontSongArtist) frontSongArtist.value = val;
-        if (typeof window.updateSongNameBoxes === 'function') window.updateSongNameBoxes();
-        
-        // Sync default title-card content
-        const tc = (state.config.overlays || []).find(o => o.type === 'title-card');
-        if (tc) {
-          tc.content = `${state.config.metadata.songName} - ${state.config.metadata.singerBand}`;
+      } else {
+        if (state.config && state.config.metadata) {
+          state.config.metadata.songName = val;
+          
+          // Sync to setup page input
+          const frontSongTitle = document.getElementById('front-song-title');
+          if (frontSongTitle) frontSongTitle.value = val;
+          if (typeof window.updateSongNameBoxes === 'function') window.updateSongNameBoxes();
+          
+          // Sync default title-card content
+          const tc = (state.config.overlays || []).find(o => o.type === 'title-card');
+          if (tc) {
+            tc.content = val;
+            tc.text = val;
+          }
+          
+          // Update header title if present
+          const displayProjectName = document.getElementById('display-project-name');
+          if (displayProjectName) displayProjectName.innerText = val;
         }
-
-        state.hasUnsavedConfigChanges = true;
-        drawKaraokeFrame(state.currentTime);
       }
-    });
-  }
-
-  // Color Swatch Swapping Sync with Color Picker
-  const fontColorPicker = document.getElementById('studio-font-color-picker');
-  if (fontColorPicker) {
-    fontColorPicker.addEventListener('input', (e) => {
-      const selectedColor = e.target.value;
-      state.config.config.fontColor = selectedColor;
-      document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('active'));
-      logToConsole(`Studio Controls: Accent sweep color updated to ${selectedColor} via color picker.`);
+      state.hasUnsavedConfigChanges = true;
+      if (typeof window.updateSaveButtonColor === 'function') window.updateSaveButtonColor();
+      drawKaraokeFrame(state.currentTime);
       updateTimeline();
     });
   }
 
-  // Refactor swatch click handler to also update custom color picker
-  document.querySelectorAll('.color-swatch').forEach(swatch => {
-    swatch.addEventListener('click', (e) => {
-      document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('active'));
-      swatch.classList.add('active');
+  // Insert button handler for Fonts & Styles column
+  const btnStudioInsertTextOverlay = document.getElementById('btn-studio-insert-text-overlay');
+  const studioFontSizeInput = document.getElementById('studio-font-size');
+  if (btnStudioInsertTextOverlay) {
+    btnStudioInsertTextOverlay.addEventListener('click', () => {
+      if (!state.config) {
+        alert("Please create or import a project first!");
+        return;
+      }
+      const msgText = studioTitleInput ? studioTitleInput.value.trim() : '';
+      if (!msgText) {
+        alert("Please type a message in the input box first!");
+        return;
+      }
+      if (!state.config.overlays) state.config.overlays = [];
+      const playheadTime = state.currentTime || 0;
       
-      const selectedColor = swatch.dataset.color;
-      state.config.config.fontColor = selectedColor;
-      if (fontColorPicker) fontColorPicker.value = selectedColor;
+      const newOverlay = {
+        id: `overlay_text_${Date.now()}`,
+        type: 'text',
+        text: msgText,
+        content: msgText,
+        startTime: playheadTime,
+        endTime: Math.min(state.duration || 60, playheadTime + 5.0),
+        x: 340,
+        y: 110,
+        width: 600,
+        height: 80,
+        fontFamily: studioFontSelector ? studioFontSelector.value : 'system-ui',
+        fontSize: studioFontSizeInput ? parseInt(studioFontSizeInput.value) : 24,
+        fontColor: fontColorPicker ? fontColorPicker.value : '#ffffff',
+        opacity: studioFontOpacity ? parseInt(studioFontOpacity.value) / 100 : 1.0,
+        shadow: studioFontShadow ? parseInt(studioFontShadow.value) : 8,
+        transition: studioTitleTransition ? studioTitleTransition.value : 'fade',
+        transparentBox: true
+      };
       
-      logToConsole(`Studio Controls: Accent sweep color updated to ${selectedColor}.`);
-      updateTimeline();
+      state.config.overlays.push(newOverlay);
+      state.hasUnsavedConfigChanges = true;
+      if (typeof window.updateSaveButtonColor === 'function') window.updateSaveButtonColor();
+      drawKaraokeFrame(state.currentTime);
+      if (typeof updateTimeline === 'function') updateTimeline();
+      logToConsole(`Overlay: Inserted message "${msgText}" at ${playheadTime.toFixed(1)}s`);
     });
-  });
+  }
 
   // Lyric Editor ContentEditable scroll sync, sync state, and Insert row button
   const lyricTextCol = document.getElementById('studio-lyric-text-col');
@@ -8560,6 +8700,46 @@ function setupStudioPanelControls() {
     });
   }
   
+  const imageOverlayWorkspace = document.getElementById('image-overlay-workspace');
+  if (imageOverlayWorkspace) {
+    imageOverlayWorkspace.addEventListener('dragover', (e) => {
+      e.preventDefault();
+    });
+    imageOverlayWorkspace.addEventListener('drop', (e) => {
+      e.preventDefault();
+      try {
+        const dragData = JSON.parse(e.dataTransfer.getData('application/json'));
+        if (dragData && dragData.url) {
+          const rect = imageOverlayWorkspace.getBoundingClientRect();
+          const dropX = e.clientX - rect.left;
+          const dropTime = Math.max(0, Math.min(state.duration, dropX / state.zoom));
+          
+          if (!state.config.config.overlayImages) state.config.config.overlayImages = [];
+          
+          const newBlock = {
+            id: 'img_' + Date.now() + '_' + Math.floor(Math.random() * 100),
+            name: dragData.name || 'Dropped Image',
+            url: dragData.url,
+            startTime: dropTime,
+            endTime: Math.min(state.duration, dropTime + 5.0),
+            x: 200,
+            y: 150,
+            width: 300,
+            height: 200
+          };
+          
+          state.config.config.overlayImages.push(newBlock);
+          state.config.config.overlayImages.sort((a, b) => a.startTime - b.startTime);
+          
+          updateTimeline();
+          logToConsole(`[Image Track] Dropped image "${newBlock.name}" at ${dropTime.toFixed(2)}s.`);
+        }
+      } catch (err) {
+        logToConsole(`[Image Track] Error dropping image: ${err.message}`);
+      }
+    });
+  }
+  
   if (overlayWorkspace) {
     overlayWorkspace.addEventListener('dragover', (e) => {
       e.preventDefault();
@@ -8835,7 +9015,6 @@ function setupStudioPanelControls() {
   }
 
   // Font Size picker in main Fonts & Styles popup
-  const studioFontSizeInput = document.getElementById('studio-font-size');
   if (studioFontSizeInput) {
     studioFontSizeInput.addEventListener('input', () => {
       const sz = parseInt(studioFontSizeInput.value) || 48;
@@ -8848,123 +9027,7 @@ function setupStudioPanelControls() {
     });
   }
 
-  // Quick Overlay / Message Panel (2 Rows) Listeners
-  const btnStudioQuickInsert = document.getElementById('btn-studio-quick-insert');
-  const studioQuickMsgInput = document.getElementById('studio-quick-msg-input');
-  const studioQuickMsgFont = document.getElementById('studio-quick-msg-font');
-  const studioQuickMsgSize = document.getElementById('studio-quick-msg-size');
-  const studioQuickMsgColor = document.getElementById('studio-quick-msg-color');
-  const studioQuickMsgTransparent = document.getElementById('studio-quick-msg-transparent');
-
-  if (btnStudioQuickInsert && studioQuickMsgInput) {
-    btnStudioQuickInsert.addEventListener('click', () => {
-      if (!state.config) {
-        alert("Please create or import a project first!");
-        return;
-      }
-      const msgText = studioQuickMsgInput.value.trim();
-      if (!msgText) {
-        alert("Please type a message first!");
-        return;
-      }
-      if (!state.config.overlays) state.config.overlays = [];
-      const playheadTime = state.currentTime || 0;
-      
-      const newOverlay = {
-        id: `overlay_text_${Date.now()}`,
-        type: 'text',
-        text: msgText,
-        content: msgText,
-        startTime: playheadTime,
-        endTime: Math.min(state.duration || 60, playheadTime + 5.0),
-        x: 340,
-        y: 110,
-        width: 600,
-        height: 80,
-        fontFamily: studioQuickMsgFont ? studioQuickMsgFont.value : 'system-ui',
-        fontSize: studioQuickMsgSize ? parseInt(studioQuickMsgSize.value) : 24,
-        fontColor: studioQuickMsgColor ? studioQuickMsgColor.value : '#ffffff',
-        transparentBox: studioQuickMsgTransparent ? studioQuickMsgTransparent.checked : true
-      };
-      
-      state.config.overlays.push(newOverlay);
-      studioQuickMsgInput.value = '';
-      state.hasUnsavedConfigChanges = true;
-      if (typeof window.updateSaveButtonColor === 'function') window.updateSaveButtonColor();
-      drawKaraokeFrame(state.currentTime);
-      if (typeof updateTimeline === 'function') updateTimeline();
-      logToConsole(`Quick Overlay: Inserted message "${msgText}" at ${playheadTime.toFixed(1)}s`);
-    });
-
-    studioQuickMsgInput.addEventListener('input', () => {
-      if (state.selectedItemType === 'overlay' && state.selectedItemIndex !== null && state.config.overlays) {
-        const ov = state.config.overlays[state.selectedItemIndex];
-        if (ov && ov.type === 'text') {
-          ov.text = studioQuickMsgInput.value;
-          ov.content = studioQuickMsgInput.value;
-          state.hasUnsavedConfigChanges = true;
-          if (typeof window.updateSaveButtonColor === 'function') window.updateSaveButtonColor();
-          drawKaraokeFrame(state.currentTime);
-        }
-      }
-    });
-
-    if (studioQuickMsgFont) {
-      studioQuickMsgFont.addEventListener('change', () => {
-        if (state.selectedItemType === 'overlay' && state.selectedItemIndex !== null && state.config.overlays) {
-          const ov = state.config.overlays[state.selectedItemIndex];
-          if (ov && ov.type === 'text') {
-            ov.fontFamily = studioQuickMsgFont.value;
-            state.hasUnsavedConfigChanges = true;
-            if (typeof window.updateSaveButtonColor === 'function') window.updateSaveButtonColor();
-            drawKaraokeFrame(state.currentTime);
-          }
-        }
-      });
-    }
-
-    if (studioQuickMsgSize) {
-      studioQuickMsgSize.addEventListener('input', () => {
-        if (state.selectedItemType === 'overlay' && state.selectedItemIndex !== null && state.config.overlays) {
-          const ov = state.config.overlays[state.selectedItemIndex];
-          if (ov && ov.type === 'text') {
-            ov.fontSize = parseInt(studioQuickMsgSize.value) || 24;
-            state.hasUnsavedConfigChanges = true;
-            if (typeof window.updateSaveButtonColor === 'function') window.updateSaveButtonColor();
-            drawKaraokeFrame(state.currentTime);
-          }
-        }
-      });
-    }
-
-    if (studioQuickMsgColor) {
-      studioQuickMsgColor.addEventListener('input', () => {
-        if (state.selectedItemType === 'overlay' && state.selectedItemIndex !== null && state.config.overlays) {
-          const ov = state.config.overlays[state.selectedItemIndex];
-          if (ov && ov.type === 'text') {
-            ov.fontColor = studioQuickMsgColor.value;
-            state.hasUnsavedConfigChanges = true;
-            if (typeof window.updateSaveButtonColor === 'function') window.updateSaveButtonColor();
-            drawKaraokeFrame(state.currentTime);
-          }
-        }
-      });
-    }
-
-    if (studioQuickMsgTransparent) {
-      studioQuickMsgTransparent.addEventListener('change', () => {
-        if (state.selectedItemType === 'overlay' && state.selectedItemIndex !== null && state.config.overlays) {
-          const ov = state.config.overlays[state.selectedItemIndex];
-          if (ov && ov.type === 'text') {
-            ov.transparentBox = studioQuickMsgTransparent.checked;
-            state.hasUnsavedConfigChanges = true;
-            if (typeof window.updateSaveButtonColor === 'function') window.updateSaveButtonColor();
-            drawKaraokeFrame(state.currentTime);
-          }
-        }
-      });
-    }
-  }
+  // Quick text listeners removed (functionality merged to Fonts & Styles)
 }
 
 // --- Canvas Selection, Dragging, & Resizing Interaction Events ---
@@ -9156,9 +9219,6 @@ function setupCanvasInteractionEvents() {
       if (!activeItemFound && state.overlaysEnabled && state.config.overlays) {
         state.config.overlays.forEach(ov => {
           if (ov.type !== 'vfx' && time >= ov.startTime && time <= ov.endTime) {
-            const ox = ov.x !== undefined ? ov.x : (ov.type === 'text' ? 340 : (ov.type === 'title-card' ? 640 / 2 : 1100)); // wait, w / 2 - 320 = 1280 / 2 - 320 = 320
-            // Ah! w is 1280, so w / 2 - 320 = 320. h is 720, so h / 2 - 85 = 360 - 85 = 275.
-            // Let's write the exact values directly!
             const ox = ov.x !== undefined ? ov.x : (ov.type === 'text' ? 340 : (ov.type === 'title-card' ? 320 : 1100));
             const oy = ov.y !== undefined ? ov.y : (ov.type === 'text' ? 110 : (ov.type === 'title-card' ? 275 : 430));
             const ow = ov.width !== undefined ? ov.width : (ov.type === 'text' ? 600 : (ov.type === 'title-card' ? 640 : 110));

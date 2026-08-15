@@ -2600,9 +2600,7 @@ body {
     <div class="app" style="width: 100% !important; max-width: none !important; height: 100% !important; display: flex !important; flex-direction: column !important; margin: 0 !important; box-sizing: border-box; padding: 10px; gap: 10px;">
       
       <!-- HIDE SIDEBAR -->
-      <aside class="settings-panel" style="display: none;"></aside>
-
-      <!-- TOP ROW: TV CANVAS AND RIGHT LOGO PANEL (2/3 height) -->
+      <!-- TOP ROW: TV CANVAS, FONTS & STYLES AND RIGHT CONTROL PANEL -->
       <div style="flex: 2; display: flex; flex-direction: row; gap: 10px; overflow: hidden; box-sizing: border-box; min-height: 0; width: 100%;">
         <!-- Left: TV Canvas -->
         <section class="preview-area" aria-label="Video Preview Canvas" style="flex: 1; display: flex; justify-content: center; align-items: center; background: #000; overflow: hidden; min-height: 0; height: 100%; border-radius: 6px; border: 2px solid #0284c7; box-shadow: 0 0 10px rgba(2,132,199,0.2);">
@@ -2610,6 +2608,99 @@ body {
             <canvas id="karaoke-canvas" style="width: 100%; height: 100%; object-fit: contain; background: #000; display: block;"></canvas>
           </div>
         </section>
+
+        <!-- Middle Column: Fonts & Styles (Permanently Visible) -->
+        <div id="fonts-styles-column" style="width: 290px; flex-shrink: 0; background: #231912; border: 2px solid #ff7b00; border-radius: 6px; padding: 10px; box-sizing: border-box; height: 100%; display: flex; flex-direction: column; gap: 6px; overflow-y: auto;">
+          <div style="font-size: 0.72rem; color: #ff7b00; font-weight: bold; text-transform: uppercase; margin-bottom: 2px; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 4px; text-align: left;">🅰️ Fonts & Styles</div>
+          
+          <div style="font-family: Arial, Helvetica, sans-serif !important; display: flex; flex-direction: column; gap: 6px;">
+            
+            <div class="front-form-group" style="display: flex; align-items: center; justify-content: flex-start; gap: 6px; margin-bottom: 2px;">
+              <input type="checkbox" id="sidebar-toggle-title-card" checked style="margin: 0; width: 12px; height: 12px; accent-color: #ff7b00; cursor: pointer;">
+              <label for="sidebar-toggle-title-card" style="font-size:0.68rem; color:#fff; cursor: pointer; user-select: none; text-align: left;">Show Title Box (Title Card)</label>
+            </div>
+            
+            <div class="front-form-group">
+              <label for="studio-title-input" style="font-size:0.68rem; color:var(--text-muted); display:block; margin-bottom:2px; text-align: left;">Text / Message Input</label>
+              <textarea id="studio-title-input" placeholder="Type title or message overlay here..." style="font-size:0.65rem; padding:4px; background: var(--bg-dark); border:1px solid #854d0e; border-radius:4px; color:#fff; width:100%; height: 50px; box-sizing:border-box; outline: none; resize: none; font-family: inherit; line-height: 1.2;"></textarea>
+            </div>
+
+            <div style="display: flex; gap: 6px; width: 100%;">
+              <div style="flex: 2;">
+                <label for="studio-font-selector" style="font-size:0.68rem; color:var(--text-muted); display:block; margin-bottom:2px; text-align: left;">Font Family</label>
+                <select id="studio-font-selector" style="width:100%; background: var(--bg-dark); border:1px solid #854d0e; padding:3px; border-radius:4px; color:#fff; font-size:0.68rem; outline: none; cursor: pointer; height: 24px;">
+                  <!-- Filtered dynamically -->
+                </select>
+              </div>
+              <div style="flex: 1;">
+                <label for="studio-font-size" style="font-size:0.68rem; color:var(--text-muted); display:block; margin-bottom:2px; text-align: left;">Font Size</label>
+                <input type="number" id="studio-font-size" min="10" max="120" value="48" style="width: 100%; background: var(--bg-dark); border: 1px solid #854d0e; padding: 3px; border-radius: 4px; color: #fff; font-size: 0.68rem; text-align: center; height: 24px; box-sizing: border-box; outline: none;">
+              </div>
+            </div>
+            
+            <div class="front-form-group">
+              <label style="font-size:0.68rem; color:var(--text-muted); display:block; margin-bottom:2px; text-align: left;">Font Colors</label>
+              <div style="display: flex; gap: 4px; align-items: center;">
+                <input type="color" id="studio-font-color-picker" value="#06b6d4" style="width:20px; height:20px; padding:0; border:1px solid #ff7b00; border-radius:4px; background:none; cursor:pointer;" title="Custom Color Picker">
+                <div class="color-palette-grid" style="display: grid; grid-template-columns: repeat(8, 1fr); gap: 3px; flex: 1;">
+                  <!-- Row 1 -->
+                  <div class="color-swatch" data-color="#ffffff" style="background:#ffffff; width:12px; height:12px; border-radius:2px; cursor:pointer; border:1px solid rgba(0,0,0,0.5);" title="White"></div>
+                  <div class="color-swatch" data-color="#f59e0b" style="background:#f59e0b; width:12px; height:12px; border-radius:2px; cursor:pointer;" title="Amber"></div>
+                  <div class="color-swatch" data-color="#eab308" style="background:#eab308; width:12px; height:12px; border-radius:2px; cursor:pointer;" title="Yellow"></div>
+                  <div class="color-swatch" data-color="#84cc16" style="background:#84cc16; width:12px; height:12px; border-radius:2px; cursor:pointer;" title="Lime"></div>
+                  <div class="color-swatch" data-color="#22c55e" style="background:#22c55e; width:12px; height:12px; border-radius:2px; cursor:pointer;" title="Green"></div>
+                  <div class="color-swatch" data-color="#10b981" style="background:#10b981; width:12px; height:12px; border-radius:2px; cursor:pointer;" title="Emerald"></div>
+                  <div class="color-swatch active" data-color="#06b6d4" style="background:#06b6d4; width:12px; height:12px; border-radius:2px; cursor:pointer;" title="Cyan"></div>
+                  <div class="color-swatch" data-color="#3b82f6" style="background:#3b82f6; width:12px; height:12px; border-radius:2px; cursor:pointer;" title="Blue"></div>
+                  
+                  <!-- Row 2 (Red family / custom requests) -->
+                  <div class="color-swatch" data-color="#ef4444" style="background:#ef4444; width:12px; height:12px; border-radius:2px; cursor:pointer;" title="Red"></div>
+                  <div class="color-swatch" data-color="#dc2626" style="background:#dc2626; width:12px; height:12px; border-radius:2px; cursor:pointer;" title="Crimson"></div>
+                  <div class="color-swatch" data-color="#b91c1c" style="background:#b91c1c; width:12px; height:12px; border-radius:2px; cursor:pointer;" title="Dark Red"></div>
+                  <div class="color-swatch" data-color="#ff7f50" style="background:#ff7f50; width:12px; height:12px; border-radius:2px; cursor:pointer;" title="Coral"></div>
+                  <div class="color-swatch" data-color="#ff4500" style="background:#ff4500; width:12px; height:12px; border-radius:2px; cursor:pointer;" title="Orange Red"></div>
+                  <div class="color-swatch" data-color="#f43f5e" style="background:#f43f5e; width:12px; height:12px; border-radius:2px; cursor:pointer;" title="Rose"></div>
+                  <div class="color-swatch" data-color="#ff2a85" style="background:#ff2a85; width:12px; height:12px; border-radius:2px; cursor:pointer;" title="Hot Pink"></div>
+                  <div class="color-swatch" data-color="#8b5cf6" style="background:#8b5cf6; width:12px; height:12px; border-radius:2px; cursor:pointer;" title="Purple"></div>
+                </div>
+              </div>
+            </div>
+            
+            <div style="display: flex; gap: 6px; width: 100%;">
+              <div style="flex: 1;">
+                <label for="studio-font-opacity" style="font-size:0.68rem; color:var(--text-muted); display:block; margin-bottom:2px; text-align: left;">Opacity</label>
+                <div style="display: flex; align-items: center; background: var(--bg-dark); border: 1px solid #854d0e; border-radius: 4px; padding: 2px 4px; height: 24px; box-sizing: border-box;">
+                  <input type="number" id="studio-font-opacity" min="0" max="100" value="100" style="flex: 1; border: none; background: transparent; color: #fff; font-size: 0.65rem; outline: none; text-align: center; width: 100%;">
+                  <span style="font-size: 0.65rem; color: var(--text-muted); margin-left: 1px;">%</span>
+                  <span id="studio-opacity-val" style="display:none;">100</span>
+                </div>
+              </div>
+              
+              <div style="flex: 1;">
+                <label for="studio-font-shadow" style="font-size:0.68rem; color:var(--text-muted); display:block; margin-bottom:2px; text-align: left;">Shadow Glow</label>
+                <div style="display: flex; align-items: center; background: var(--bg-dark); border: 1px solid #854d0e; border-radius: 4px; padding: 2px 4px; height: 24px; box-sizing: border-box;">
+                  <input type="number" id="studio-font-shadow" min="0" max="30" value="8" style="flex: 1; border: none; background: transparent; color: #fff; font-size: 0.65rem; outline: none; text-align: center; width: 100%;">
+                  <span style="font-size: 0.65rem; color: var(--text-muted); margin-left: 1px;">px</span>
+                  <span id="studio-shadow-val" style="display:none;">8</span>
+                </div>
+              </div>
+            </div>
+            
+            <div class="front-form-group">
+              <label for="studio-title-transition" style="font-size:0.68rem; color:var(--text-muted); display:block; margin-bottom:2px; text-align: left;">Title Card Transition</label>
+              <select id="studio-title-transition" style="width:100%; background: var(--bg-dark); border:1px solid #854d0e; padding:3px; border-radius:4px; color:#fff; font-size:0.65rem; outline: none; cursor: pointer; height: 24px;">
+                <option value="fade">Dissolve / Fade Out</option>
+                <option value="zoom">Zoom Out</option>
+                <option value="slide">Slide Left</option>
+                <option value="none">None (Cut)</option>
+              </select>
+            </div>
+
+            <!-- Insert Button to Track 2 -->
+            <button id="btn-studio-insert-text-overlay" class="btn" style="width: 100%; height: 28px; font-size: 0.72rem; font-weight: bold; background-color: #854d0e !important; border: 1px solid #ff7b00 !important; color: #fff !important; cursor: pointer; border-radius: 4px; margin-top: 4px;">➕ Insert to Message/Overlays Bar (#2)</button>
+          </div>
+        </div>
+
         <!-- Right Column: Logo, Branding & Master Control buttons -->
         <div style="width: 250px; flex-shrink: 0; display: flex; flex-direction: column; gap: 8px; background: rgba(0,0,0,0.3); border-radius: 6px; padding: 10px; box-sizing: border-box; border: 1px solid rgba(255,255,255,0.05); height: 100%; align-items: center; justify-content: flex-start; position: relative;">
           <!-- Branding Logo -->
@@ -2624,44 +2715,11 @@ body {
           <!-- Master popup buttons -->
           <div style="width: 100%; display: flex; flex-direction: column; gap: 6px; position: relative;">
             <button id="btn-popup-media" class="btn btn-popup-trigger" style="width: 100% !important; height: 34px !important; font-size: 0.72rem !important; display: flex !important; align-items: center !important; justify-content: flex-start !important; gap: 8px !important; margin: 4px 0 !important; background: rgba(255, 255, 255, 0.05) !important; border: 1px solid rgba(255,255,255,0.15) !important; color: #e2e8f0 !important; cursor: pointer; border-radius: 4px; padding-left: 12px !important; font-weight: 600 !important;">🖼️ Media Library</button>
-            <button id="btn-popup-fonts" class="btn btn-popup-trigger" style="width: 100% !important; height: 34px !important; font-size: 0.72rem !important; display: flex !important; align-items: center !important; justify-content: flex-start !important; gap: 8px !important; margin: 4px 0 !important; background: rgba(255, 255, 255, 0.05) !important; border: 1px solid rgba(255,255,255,0.15) !important; color: #e2e8f0 !important; cursor: pointer; border-radius: 4px; padding-left: 12px !important; font-weight: 600 !important;">🅰️ Fonts & Styles</button>
             <button id="btn-popup-overlays" class="btn btn-popup-trigger" style="width: 100% !important; height: 34px !important; font-size: 0.72rem !important; display: flex !important; align-items: center !important; justify-content: flex-start !important; gap: 8px !important; margin: 4px 0 !important; background: rgba(255, 255, 255, 0.05) !important; border: 1px solid rgba(255,255,255,0.15) !important; color: #e2e8f0 !important; cursor: pointer; border-radius: 4px; padding-left: 12px !important; font-weight: 600 !important;">✨ Overlays & VFX</button>
-            
-            <!-- Quick Overlay / Message Panel (2 Rows) -->
-            <div style="width: 100%; background: rgba(0,0,0,0.25); border: 1px dashed #ff7b00; border-radius: 4px; padding: 6px; box-sizing: border-box; display: flex; flex-direction: column; gap: 4px; margin-top: 6px;">
-              <div style="font-size: 0.6rem; color: #ff7b00; font-weight: bold; text-transform: uppercase; text-align: left; margin-bottom: 2px;">⚡ Quick Text Overlay</div>
-              
-              <!-- Row 1: Multiline Textarea and (Insert + Color) Stack -->
-              <div style="display: flex; gap: 4px; align-items: stretch;">
-                <textarea id="studio-quick-msg-input" placeholder="Line 1&#10;Line 2..." style="flex: 1; height: 42px; font-size: 0.6rem; background: var(--bg-dark); border: 1px solid #854d0e; border-radius: 4px; color: #fff; resize: none; box-sizing: border-box; line-height: 1.2; padding: 2px 4px; font-family: inherit; outline: none;"></textarea>
-                <div style="display: flex; flex-direction: column; gap: 2px; width: 44px; flex-shrink: 0;">
-                  <button id="btn-studio-quick-insert" class="btn" style="height: 20px; font-size: 0.58rem; background-color: #854d0e !important; border: 1px solid #ff7b00 !important; color: #fff !important; padding: 0; border-radius: 4px; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; width: 100%;">➕ Ins</button>
-                  <input type="color" id="studio-quick-msg-color" value="#ffffff" style="width: 100%; height: 20px; border: 1px solid #ff7b00; border-radius: 4px; background: none; cursor: pointer; padding: 0; box-sizing: border-box;" title="Text Color">
-                </div>
-              </div>
-
-              <!-- Row 2: Font Family, Font Size, and Transparent checkbox -->
-              <div style="display: flex; gap: 4px; align-items: center; justify-content: space-between;">
-                <select id="studio-quick-msg-font" style="flex: 1.5; font-size: 0.55rem; height: 18px; background: var(--bg-dark); border: 1px solid #854d0e; color: #fff; border-radius: 3px; cursor: pointer; outline: none; width: 0; min-width: 0;">
-                  <option value="system-ui">System</option>
-                  <option value="Montserrat">Montserrat</option>
-                  <option value="Roboto">Roboto</option>
-                  <option value="Arial">Arial</option>
-                  <option value="Inter">Inter</option>
-                  <option value="Times New Roman">Times New Roman</option>
-                </select>
-                
-                <input type="number" id="studio-quick-msg-size" value="24" min="10" max="120" style="width: 32px; font-size: 0.55rem; height: 18px; background: var(--bg-dark); border: 1px solid #854d0e; color: #fff; border-radius: 3px; text-align: center; outline: none; padding: 0; flex-shrink: 0;" title="Font Size">
-                
-                <label style="display: flex; align-items: center; gap: 2px; cursor: pointer; color: #aaa; font-size: 0.52rem; flex-shrink: 0;" title="Toggle background box transparency">
-                  <input type="checkbox" id="studio-quick-msg-transparent" checked style="margin: 0; width: 10px; height: 10px; accent-color: #ff7b00;">
-                  <span>Trans.</span>
-                </label>
-              </div>
-            </div>
             
             <button id="btn-export-top" class="btn" style="width: 100% !important; height: 34px !important; font-size: 0.72rem !important; display: flex !important; align-items: center !important; justify-content: flex-start !important; gap: 8px !important; margin: 4px 0 !important; background: #854d0e !important; border: 1px solid #ff7b00 !important; color: #fff !important; cursor: pointer; border-radius: 4px; padding-left: 12px !important; font-weight: bold !important;" title="Export current track data">📤 Export</button>
             
+            <!-- POP-UP PANELS (Will float to the left of the sidebar) -->     
             <!-- POP-UP PANELS (Will float to the left of the sidebar) -->
             <!-- 1. Media Library Pop-up -->
             <div id="popup-container-media" class="popup-panel" style="display: none; position: absolute; right: 260px; bottom: -20px; width: 340px; height: 280px; background: #231912; border: 2px solid #39ff14; box-shadow: 0 4px 20px rgba(0,0,0,0.5); border-radius: 8px; z-index: 1000; padding: 10px; box-sizing: border-box; flex-direction: column;">
@@ -2707,93 +2765,8 @@ body {
               </div>
             </div>
 
-            <!-- 2. Fonts Pop-up -->
-            <div id="popup-container-fonts" class="popup-panel" style="display: none; position: absolute; right: 260px; bottom: -10px; width: 300px; height: 380px; background: #231912; border: 2px solid #39ff14; box-shadow: 0 4px 20px rgba(0,0,0,0.5); border-radius: 8px; z-index: 1000; padding: 10px; box-sizing: border-box; flex-direction: column;">
-              <button class="popup-close-btn" style="position: absolute; top: 4px; right: 6px; background: transparent; border: none; color: #a0aec0; font-size: 16px; font-weight: bold; cursor: pointer;" onclick="document.getElementById('popup-container-fonts').style.display='none'; document.getElementById('btn-popup-fonts').classList.remove('active');">×</button>
-              <div style="font-size: 0.72rem; color: #ff7b00; font-weight: bold; text-transform: uppercase; margin-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 4px; text-align: left;">Fonts & Styles</div>
-              <!-- Content -->
-              <div class="front-card studio-container-card" style="font-family: Arial, Helvetica, sans-serif !important; flex: 1; padding: 6px; background: #231912; border: none !important; border-radius: 8px; box-sizing: border-box; display: flex; flex-direction: column; justify-content: space-between; height: 100%; overflow: visible;">
-                <div style="zoom: 0.90; height: 111%; display: flex; flex-direction: column; justify-content: space-between; box-sizing: border-box;">
-                  <div class="front-form-group" style="margin-bottom: 4px; display: flex; align-items: center; justify-content: flex-start; gap: 6px;">
-                    <input type="checkbox" id="sidebar-toggle-title-card" checked style="margin: 0; width: 12px; height: 12px; accent-color: #ff7b00; cursor: pointer;">
-                    <label for="sidebar-toggle-title-card" style="font-size:0.68rem; color:#fff; cursor: pointer; user-select: none; text-align: left;">Show Title Box (Title Card)</label>
-                  </div>
-                  <div class="front-form-group" style="margin-bottom: 4px;">
-                    <label for="studio-title-input" style="font-size:0.68rem; color:var(--text-muted); display:block; margin-bottom:1px; text-align: left;">Song Title</label>
-                    <div style="display: flex; gap: 4px; align-items: center; width: 100%;">
-                      <input type="text" id="studio-title-input" placeholder="Edit Song Title..." style="font-size:0.65rem; padding:3px; background: var(--bg-dark); border:1px solid #854d0e; border-radius:4px; color:#fff; flex: 1; min-width: 0; box-sizing:border-box; outline: none;">
-                      <button id="btn-studio-title-to-overlay" class="btn" style="font-size: 0.55rem; padding: 3px 6px; background: #1e3a8a !important; border: 1px solid #3b82f6 !important; color: #fff !important; cursor: pointer; border-radius: 4px; font-weight: bold; height: 24px; box-sizing: border-box; line-height: 1.2;" title="Insert Song Title as Overlay on Timeline">➕ Overlay</button>
-                    </div>
-                  </div>
-                  <div class="front-form-group" style="margin-bottom: 4px;">
-                    <label for="studio-artist-input" style="font-size:0.68rem; color:var(--text-muted); display:block; margin-bottom:1px; text-align: left;">Artist / Singer</label>
-                    <input type="text" id="studio-artist-input" placeholder="Edit Artist..." style="font-size:0.65rem; padding:3px; background: var(--bg-dark); border:1px solid #854d0e; border-radius:4px; color:#fff; width:100%; box-sizing:border-box; outline: none;">
-                  </div>
-                  <div style="display: flex; gap: 6px; width: 100%; margin-bottom: 4px;">
-                    <div style="flex: 2;">
-                      <label for="studio-font-selector" style="font-size:0.68rem; color:var(--text-muted); display:block; margin-bottom:2px; text-align: left;">Font Family</label>
-                      <select id="studio-font-selector" style="width:100%; background: var(--bg-dark); border:1px solid #854d0e; padding:3px; border-radius:4px; color:#fff; font-size:0.68rem; margin-bottom:2px; outline: none; cursor: pointer; height: 24px;">
-                        <!-- Filtered by active language in app.js -->
-                      </select>
-                    </div>
-                    <div style="flex: 1;">
-                      <label for="studio-font-size" style="font-size:0.68rem; color:var(--text-muted); display:block; margin-bottom:2px; text-align: left;">Font Size</label>
-                      <input type="number" id="studio-font-size" min="10" max="120" value="48" style="width: 100%; background: var(--bg-dark); border: 1px solid #854d0e; padding: 3px; border-radius: 4px; color: #fff; font-size: 0.68rem; text-align: center; height: 24px; box-sizing: border-box; outline: none;">
-                    </div>
-                  </div>
-                  
-                  <div class="front-form-group" style="margin-bottom: 4px;">
-                    <label style="font-size:0.68rem; color:var(--text-muted); display:block; margin-bottom:2px; text-align: left;">Font Colors</label>
-                    <div style="display: flex; gap: 4px; align-items: center; margin-bottom: 4px;">
-                      <input type="color" id="studio-font-color-picker" value="#06b6d4" style="width:18px; height:18px; padding:0; border:1px solid #ff7b00; border-radius:4px; background:none; cursor:pointer;" title="Custom Color Picker">
-                      <div class="color-palette-grid" style="display: grid; grid-template-columns: repeat(8, 1fr); gap: 2px; flex: 1;">
-                        <div class="color-swatch" data-color="#ffffff" style="background:#ffffff; width:12px; height:12px; border-radius:2px; cursor:pointer; border:1px solid rgba(0,0,0,0.5);" title="White"></div>
-                        <div class="color-swatch" data-color="#f59e0b" style="background:#f59e0b; width:12px; height:12px; border-radius:2px; cursor:pointer;" title="Amber"></div>
-                        <div class="color-swatch" data-color="#eab308" style="background:#eab308; width:12px; height:12px; border-radius:2px; cursor:pointer;" title="Yellow"></div>
-                        <div class="color-swatch" data-color="#84cc16" style="background:#84cc16; width:12px; height:12px; border-radius:2px; cursor:pointer;" title="Lime"></div>
-                        <div class="color-swatch" data-color="#22c55e" style="background:#22c55e; width:12px; height:12px; border-radius:2px; cursor:pointer;" title="Green"></div>
-                        <div class="color-swatch" data-color="#10b981" style="background:#10b981; width:12px; height:12px; border-radius:2px; cursor:pointer;" title="Emerald"></div>
-                        <div class="color-swatch active" data-color="#06b6d4" style="background:#06b6d4; width:12px; height:12px; border-radius:2px; cursor:pointer;" title="Cyan"></div>
-                        <div class="color-swatch" data-color="#3b82f6" style="background:#3b82f6; width:12px; height:12px; border-radius:2px; cursor:pointer;" title="Blue"></div>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div style="display: flex; gap: 6px; width: 100%; margin-bottom: 4px;">
-                    <div style="flex: 1;">
-                      <label for="studio-font-opacity" style="font-size:0.68rem; color:var(--text-muted); display:block; margin-bottom:1px; text-align: left;">Opacity</label>
-                      <div style="display: flex; align-items: center; background: var(--bg-dark); border: 1px solid #854d0e; border-radius: 4px; padding: 2px 4px;">
-                        <input type="number" id="studio-font-opacity" min="0" max="100" value="100" style="flex: 1; border: none; background: transparent; color: #fff; font-size: 0.65rem; outline: none; text-align: center; width: 100%;">
-                        <span style="font-size: 0.65rem; color: var(--text-muted); margin-left: 1px;">%</span>
-                        <span id="studio-opacity-val" style="display:none;">100</span>
-                      </div>
-                    </div>
-                    
-                    <div style="flex: 1;">
-                      <label for="studio-font-shadow" style="font-size:0.68rem; color:var(--text-muted); display:block; margin-bottom:1px; text-align: left;">Shadow Glow</label>
-                      <div style="display: flex; align-items: center; background: var(--bg-dark); border: 1px solid #854d0e; border-radius: 4px; padding: 2px 4px;">
-                        <input type="number" id="studio-font-shadow" min="0" max="30" value="8" style="flex: 1; border: none; background: transparent; color: #fff; font-size: 0.65rem; outline: none; text-align: center; width: 100%;">
-                        <span style="font-size: 0.65rem; color: var(--text-muted); margin-left: 1px;">px</span>
-                        <span id="studio-shadow-val" style="display:none;">8</span>
-                      </div>
-                    </div>
-                  </div>
-                  
-                  <div class="front-form-group" style="margin-bottom: 2px;">
-                    <label for="studio-title-transition" style="font-size:0.68rem; color:var(--text-muted); display:block; margin-bottom:1px; text-align: left;">Title Card Transition</label>
-                    <select id="studio-title-transition" style="width:100%; background: var(--bg-dark); border:1px solid #854d0e; padding:3px; border-radius:4px; color:#fff; font-size:0.65rem; outline: none; cursor: pointer;">
-                      <option value="fade">Dissolve / Fade Out</option>
-                      <option value="zoom">Zoom Out</option>
-                      <option value="slide">Slide Left</option>
-                      <option value="none">None (Cut)</option>
-                    </select>
-                  </div>
-                </div>
-              </div>
-            </div>
-
             <!-- 3. Overlays Pop-up -->
-            <div id="popup-container-overlays" class="popup-panel" style="display: none; position: absolute; right: 260px; bottom: -20px; width: 300px; height: 220px; background: #231912; border: 2px solid #39ff14; box-shadow: 0 4px 20px rgba(0,0,0,0.5); border-radius: 8px; z-index: 1000; padding: 10px; box-sizing: border-box; flex-direction: column;">
+            <div id="popup-container-overlays" class="popup-panel" style="display: none; position: absolute; right: 260px; bottom: -20px; width: 300px; height: 130px; background: #231912; border: 2px solid #39ff14; box-shadow: 0 4px 20px rgba(0,0,0,0.5); border-radius: 8px; z-index: 1000; padding: 10px; box-sizing: border-box; flex-direction: column;">
               <button class="popup-close-btn" style="position: absolute; top: 4px; right: 6px; background: transparent; border: none; color: #a0aec0; font-size: 16px; font-weight: bold; cursor: pointer;" onclick="document.getElementById('popup-container-overlays').style.display='none'; document.getElementById('btn-popup-overlays').classList.remove('active');">×</button>
               <div style="font-size: 0.72rem; color: #ff7b00; font-weight: bold; text-transform: uppercase; margin-bottom: 8px; border-bottom: 1px solid rgba(255,255,255,0.08); padding-bottom: 4px; text-align: left;">Overlays & VFX</div>
               <!-- Content -->
@@ -2818,18 +2791,10 @@ body {
                       </div>
                     </div>
                   </div>
-                  
-                  <div class="front-form-group" style="margin-top:2px;">
-                    <label for="studio-msg-input" style="font-size:0.68rem; color:var(--text-muted); display:block; margin-bottom:2px; text-align: left;">Custom Message Overlay / Ad</label>
-                    <input type="text" id="studio-msg-input" placeholder="Type overlay message here..." style="font-size:0.65rem; padding:2px; background: var(--bg-dark); border:1px solid #854d0e; border-radius:4px; color:#fff; width:100%; box-sizing:border-box; outline: none;">
-                    <div style="display: flex; flex-direction: column; gap: 4px; margin-top: 4px; width: 100%;">
-                      <button id="btn-studio-insert-msg" class="btn btn-tiny" style="width:100%; height:18px; font-size:0.62rem; background-color: #854d0e !important; border: 1px solid #ff7b00 !important; color: #fff !important;">➕ Insert Message Overlay</button>
-                      <button id="btn-studio-insert-title-overlay" class="btn btn-tiny" style="width:100%; height:18px; font-size:0.62rem; background-color: #1e3a8a !important; border: 1px solid #3b82f6 !important; color: #fff !important;">➕ Insert Song Title as Overlay</button>
-                    </div>
-                  </div>
                 </div>
               </div>
             </div>
+
           </div>
 
           <!-- Placeholders to satisfy JS logic -->
@@ -2861,9 +2826,7 @@ body {
           <!-- Save Template -->
           <button id="btn-save-project" class="btn" style="height: 32px !important; font-size: 0.72rem !important; display: flex !important; align-items: center !important; justify-content: center !important; gap: 4px !important; margin: 0 !important; background: rgba(255,255,255,0.05) !important; border: 1px solid rgba(255,255,255,0.15) !important; color: #e2e8f0 !important; cursor: pointer; border-radius: 4px; padding: 0 10px;" title="Save current visual settings as Template">💾 Template</button>
           
-          <!-- Reload Audio -->
-          <button id="btn-studio-audio-reload" class="btn" style="height: 32px !important; font-size: 0.72rem !important; display: flex !important; align-items: center !important; justify-content: center !important; gap: 4px !important; margin: 0 !important; background: #854d0e !important; border: 1px solid #ff7b00 !important; color: #fff !important; cursor: pointer; border-radius: 4px; padding: 0 10px; font-weight: bold;" title="Reload MP3 Audio file for this project and split it automatically">📁 Reload Audio</button>
-          <input type="file" id="studio-audio-reload-input" style="display: none;" accept="audio/*">
+          
           
           <!-- Back / Rewind -->
           <button id="btn-rewind" class="btn" style="height: 32px !important; font-size: 0.75rem !important; display: flex !important; align-items: center !important; justify-content: center !important; margin: 0 !important; background: rgba(255,255,255,0.05) !important; border: 1px solid rgba(255,255,255,0.15) !important; color: #e2e8f0 !important; cursor: pointer; border-radius: 4px; padding: 0 12px;" title="Go back to Start">⏪</button>
@@ -2875,7 +2838,7 @@ body {
           <div class="time-display" id="time-display" style="font-family: monospace; font-size: 1.1rem; font-weight: bold; color: #ff7b00; background: #000; text-align: center; padding: 4px 14px; border-radius: 4px; border: 1px solid rgba(255,255,255,0.15); user-select: none;">00:00.00</div>
           
           <!-- Save Project -->
-          <button id="btn-studio-save-db" class="btn" style="height: 32px !important; font-size: 0.72rem !important; display: none !important; align-items: center !important; justify-content: center !important; gap: 4px !important; margin: 0 !important; background: #854d0e !important; border: 1px solid #ff7b00 !important; color: #fff !important; cursor: pointer; border-radius: 4px; font-weight: bold; padding: 0 10px;" title="Save current project to local storage">💾 Project</button>
+          <button id="btn-studio-save-db" class="btn" style="height: 32px !important; font-size: 0.72rem !important; display: flex !important; align-items: center !important; justify-content: center !important; gap: 4px !important; margin: 0 !important; background: #854d0e !important; border: 1px solid #ff7b00 !important; color: #fff !important; cursor: pointer; border-radius: 4px; font-weight: bold; padding: 0 10px;" title="Save current project to local storage">💾 Save Project</button>
         </div>
         
         <!-- Right: Zoom slider -->
@@ -3063,10 +3026,28 @@ async function generateInstrumental(file) {
     const leftOut = instBuffer.getChannelData(0);
     const rightOut = instBuffer.getChannelData(1);
     
-    for (let i = 0; i < length; i++) {
-      const val = leftIn[i] - rightIn[i];
-      leftOut[i] = val;
-      rightOut[i] = -val;
+    // Check if channels are identical (mono in disguise)
+    let isIdentical = true;
+    const step = Math.max(1, Math.floor(length / 1000));
+    for (let i = 0; i < length; i += step) {
+      if (Math.abs(leftIn[i] - rightIn[i]) > 0.001) {
+        isIdentical = false;
+        break;
+      }
+    }
+    
+    if (isIdentical) {
+      logToConsole("Audio check: Channels are identical (mono in disguise). Phase cancellation skipped to prevent silence.");
+      for (let i = 0; i < length; i++) {
+        leftOut[i] = leftIn[i];
+        rightOut[i] = rightIn[i];
+      }
+    } else {
+      for (let i = 0; i < length; i++) {
+        const val = leftIn[i] - rightIn[i];
+        leftOut[i] = val;
+        rightOut[i] = -val;
+      }
     }
   } else {
     const monoIn = audioBuffer.getChannelData(0);
@@ -3221,8 +3202,6 @@ const creationSongNameBox = document.getElementById('creation-song-name-box');
 const displayProjectName = document.getElementById('display-project-name');
 const btnSaveProject = document.getElementById('btn-save-project');
 const btnExportTop = document.getElementById('btn-export-top');
-const btnStudioAudioReload = document.getElementById('btn-studio-audio-reload');
-const studioAudioReloadInput = document.getElementById('studio-audio-reload-input');
 const bgTrackBlock = document.getElementById('bg-track-block');
 const tickerTrackBlock = document.getElementById('ticker-track-block');
 const navItems = document.querySelectorAll('.sidebar-nav .nav-item');
@@ -3347,7 +3326,7 @@ window.setupAudioNodes = function() {
 
 window.updateAudioRouting = function() {
   // If we have separate audio tracks uploaded
-  if (state.frontAudioFile && state.frontVocalsAudioFile) {
+  if (state.frontAudioFile && state.frontVocalsAudioFile && state.frontAudioFile.serverUrl !== state.frontVocalsAudioFile.serverUrl) {
     const targetTrack = state.audioVoiceEnabled ? state.frontVocalsAudioFile : state.frontAudioFile;
     if (targetTrack && targetTrack.serverUrl) {
       const currentSrc = audio.src || '';
@@ -4352,48 +4331,7 @@ function setupEventListeners() {
   // Call initially to sync state
   window.updateAudioToggleUI();
 
-  // Reload MP3 button wire-up
-  if (btnStudioAudioReload && studioAudioReloadInput) {
-    btnStudioAudioReload.addEventListener('click', () => {
-      studioAudioReloadInput.click();
-    });
-    studioAudioReloadInput.addEventListener('change', async (e) => {
-      const file = e.target.files[0];
-      if (!file) return;
-      
-      if (btnStudioAudioReload) {
-        btnStudioAudioReload.disabled = true;
-        btnStudioAudioReload.innerHTML = `⏳ Splitting...`;
-      }
-      
-      try {
-        logToConsole(`Studio: Reloading audio file - ${file.name}`);
-        await window.processAndLoadAudioFile(file);
-        
-        const frontAudioBtn = document.getElementById('front-audio-btn');
-        if (frontAudioBtn) {
-          frontAudioBtn.classList.add('loaded');
-          frontAudioBtn.innerHTML = `📁 Loaded: ${file.name.replace(/\.[^/.]+$/, "")}`;
-        }
-        
-        // Update vocal guide track button to reflect it's loaded!
-        const frontVocalsBtn = document.getElementById('front-vocals-btn');
-        if (frontVocalsBtn) {
-          frontVocalsBtn.classList.add('loaded');
-          frontVocalsBtn.innerHTML = `🎙️ Vocals: ${file.name.replace(/\.[^/.]+$/, "")}`;
-        }
-        
-        alert(`Audio file "${file.name}" loaded and split successfully!`);
-      } catch (err) {
-        alert("Reload audio failed: " + err.message);
-      } finally {
-        if (btnStudioAudioReload) {
-          btnStudioAudioReload.disabled = false;
-          btnStudioAudioReload.innerHTML = `📁 Reload Audio`;
-        }
-      }
-    });
-  }
+  // Reload MP3 button removed
 
   // --- Media Library (Images & Songs Tabs) ---
   const tabMediaImages = document.getElementById('tab-media-images');
@@ -6239,14 +6177,25 @@ function setupImageBlockDragging(blockDiv, leftHandle, rightHandle, blockIdx) {
     if (diagHold) diagHold.innerText = `${(block.endTime - block.startTime).toFixed(2)}s`;
   };
   
-  const onMouseUp = () => {
+  const onMouseUp = (e) => {
     isDragging = false;
     document.removeEventListener('mousemove', onMouseMove);
     document.removeEventListener('mouseup', onMouseUp);
     
+    const overlayImgWorkspace = document.getElementById('image-overlay-workspace');
+    if (overlayImgWorkspace) {
+      const rect = overlayImgWorkspace.getBoundingClientRect();
+      if (e.clientY >= rect.top && e.clientY <= rect.bottom) {
+        window.moveBlockBetweenTracks('background', blockIdx, 'image');
+        return;
+      }
+    }
+    
     const block = state.config.config.imageBlocks[blockIdx];
-    block.startTime = Math.round(block.startTime * 100) / 100;
-    block.endTime = Math.round(block.endTime * 100) / 100;
+    if (block) {
+      block.startTime = Math.round(block.startTime * 100) / 100;
+      block.endTime = Math.round(block.endTime * 100) / 100;
+    }
     
     updateTimeline();
   };
@@ -6318,14 +6267,25 @@ function setupOverlayImageBlockDragging(blockDiv, leftHandle, rightHandle, block
     if (diagHold) diagHold.innerText = `${(block.endTime - block.startTime).toFixed(2)}s`;
   };
   
-  const onMouseUp = () => {
+  const onMouseUp = (e) => {
     isDragging = false;
     document.removeEventListener('mousemove', onMouseMove);
     document.removeEventListener('mouseup', onMouseUp);
     
+    const imageWorkspace = document.getElementById('image-workspace');
+    if (imageWorkspace) {
+      const rect = imageWorkspace.getBoundingClientRect();
+      if (e.clientY >= rect.top && e.clientY <= rect.bottom) {
+        window.moveBlockBetweenTracks('image', blockIdx, 'background');
+        return;
+      }
+    }
+    
     const block = state.config.config.overlayImages[blockIdx];
-    block.startTime = Math.round(block.startTime * 100) / 100;
-    block.endTime = Math.round(block.endTime * 100) / 100;
+    if (block) {
+      block.startTime = Math.round(block.startTime * 100) / 100;
+      block.endTime = Math.round(block.endTime * 100) / 100;
+    }
     
     updateTimeline();
   };
@@ -7332,7 +7292,7 @@ function drawKaraokeFrame(time) {
   
   ctx.clearRect(0, 0, w, h);
 
-  // Auto-sync Quick Text Overlay inputs
+  // Auto-sync Fonts & Styles inputs to the active text overlay
   if (state.config && state.config.overlays) {
     const activeTextOverlay = state.config.overlays.find(o => o.type === 'text' && time >= o.startTime && time <= o.endTime);
     if (activeTextOverlay) {
@@ -7342,38 +7302,44 @@ function drawKaraokeFrame(time) {
         state.selectedItemIndex = activeIdx;
         
         // Populate inputs
-        const studioQuickMsgInput = document.getElementById('studio-quick-msg-input');
-        const studioQuickMsgFont = document.getElementById('studio-quick-msg-font');
-        const studioQuickMsgSize = document.getElementById('studio-quick-msg-size');
-        const studioQuickMsgColor = document.getElementById('studio-quick-msg-color');
-        const studioQuickMsgTransparent = document.getElementById('studio-quick-msg-transparent');
+        const studioTitleInput = document.getElementById('studio-title-input');
+        const studioFontSelector = document.getElementById('studio-font-selector');
+        const studioFontSize = document.getElementById('studio-font-size');
+        const fontColorPicker = document.getElementById('studio-font-color-picker');
+        const studioFontOpacity = document.getElementById('studio-font-opacity');
+        const studioFontShadow = document.getElementById('studio-font-shadow');
+        const studioTitleTransition = document.getElementById('studio-title-transition');
 
-        if (studioQuickMsgInput && document.activeElement !== studioQuickMsgInput) {
-          studioQuickMsgInput.value = activeTextOverlay.text || activeTextOverlay.content || '';
+        if (studioTitleInput && document.activeElement !== studioTitleInput) {
+          studioTitleInput.value = activeTextOverlay.text || activeTextOverlay.content || '';
         }
-        if (studioQuickMsgFont && activeTextOverlay.fontFamily) {
-          studioQuickMsgFont.value = activeTextOverlay.fontFamily;
+        if (studioFontSelector && activeTextOverlay.fontFamily) {
+          studioFontSelector.value = activeTextOverlay.fontFamily;
         }
-        if (studioQuickMsgSize && activeTextOverlay.fontSize) {
-          studioQuickMsgSize.value = activeTextOverlay.fontSize;
+        if (studioFontSize && activeTextOverlay.fontSize) {
+          studioFontSize.value = activeTextOverlay.fontSize;
         }
-        if (studioQuickMsgColor && activeTextOverlay.fontColor) {
-          studioQuickMsgColor.value = activeTextOverlay.fontColor;
+        if (fontColorPicker && activeTextOverlay.fontColor) {
+          fontColorPicker.value = activeTextOverlay.fontColor;
         }
-        if (studioQuickMsgTransparent) {
-          studioQuickMsgTransparent.checked = (activeTextOverlay.transparentBox !== false && activeTextOverlay.transparentBox !== 'false');
+        if (studioFontOpacity && activeTextOverlay.opacity !== undefined) {
+          studioFontOpacity.value = Math.round(activeTextOverlay.opacity * 100);
+        }
+        if (studioFontShadow && activeTextOverlay.shadow !== undefined) {
+          studioFontShadow.value = activeTextOverlay.shadow;
+        }
+        if (studioTitleTransition && activeTextOverlay.transition) {
+          studioTitleTransition.value = activeTextOverlay.transition;
         }
       }
     } else {
-      // Clear inputs if playhead moves out of range, but only if the user is not actively typing
-      const studioQuickMsgInput = document.getElementById('studio-quick-msg-input');
-      if (studioQuickMsgInput && document.activeElement !== studioQuickMsgInput) {
-        if (studioQuickMsgInput.value !== '') {
-          studioQuickMsgInput.value = '';
-          if (state.selectedItemType === 'overlay') {
-            state.selectedItemType = null;
-            state.selectedItemIndex = null;
-          }
+      // Clear or reset to default title if playhead moves out of range, only if not typing
+      const studioTitleInput = document.getElementById('studio-title-input');
+      if (studioTitleInput && document.activeElement !== studioTitleInput) {
+        if (state.selectedItemType === 'overlay') {
+          state.selectedItemType = null;
+          state.selectedItemIndex = null;
+          studioTitleInput.value = (state.config && state.config.metadata && state.config.metadata.songName) || '';
         }
       }
     }
@@ -7924,6 +7890,8 @@ function drawKaraokeFrame(time) {
           if (ov.height === undefined) ov.height = 80;
           
           const isBoxTransparent = ov.transparentBox !== false && ov.transparentBox !== 'false';
+          ctx.save();
+          if (ov.opacity !== undefined) ctx.globalAlpha = ov.opacity;
           ctx.fillStyle = isBoxTransparent ? 'rgba(0, 0, 0, 0)' : 'rgba(15, 23, 42, 0.85)';
           ctx.strokeStyle = isBoxTransparent ? 'rgba(0, 0, 0, 0)' : 'rgba(249, 115, 22, 0.4)';
           ctx.lineWidth = 1.5;
@@ -7931,6 +7899,14 @@ function drawKaraokeFrame(time) {
           ctx.roundRect(ov.x, ov.y, ov.width, ov.height, 6);
           ctx.fill();
           ctx.stroke();
+          ctx.restore();
+          
+          ctx.save();
+          if (ov.opacity !== undefined) ctx.globalAlpha = ov.opacity;
+          if (ov.shadow !== undefined && ov.shadow > 0) {
+            ctx.shadowColor = 'rgba(0, 0, 0, 0.7)';
+            ctx.shadowBlur = ov.shadow;
+          }
           
           ctx.fillStyle = ov.fontColor || '#f97316';
           const fontFam = ov.fontFamily || 'system-ui';
@@ -7940,7 +7916,7 @@ function drawKaraokeFrame(time) {
           ctx.textBaseline = 'middle';
           
           // Scrub any legacy megaphone icon prefix from rendering
-          let cleanContent = ov.content || "";
+          let cleanContent = ov.content || ov.text || "";
           if (cleanContent.startsWith('📢 ')) {
             cleanContent = cleanContent.substring(2);
           }
@@ -7952,6 +7928,7 @@ function drawKaraokeFrame(time) {
           } else {
             ctx.fillText(lines[0], ov.x + ov.width/2, ov.y + ov.height/2);
           }
+          ctx.restore();
           
           if (state.selectedItemType === 'overlay' && state.selectedItemIndex === ovIdx) {
             ctx.save();
@@ -8269,13 +8246,6 @@ function logToConsole(message) {
 
 // --- Export & Queue management ---
 function handleExport() {
-  // Clean up server libraries on export (keep only active song and main bg image)
-  const currentAudioName = state.frontAudioFile ? state.frontAudioFile.name : '';
-  const currentBgName = state.config?.config?.bgUrl ? state.config.config.bgUrl.split('/').pop() : '';
-  fetch(`/api/audio-library/cleanup?keep=${encodeURIComponent(currentAudioName)}`)
-    .then(() => fetch(`/api/image-library/cleanup?keep=${encodeURIComponent(currentBgName)}`))
-    .catch(err => console.error("Server files cleanup on export failed:", err));
-
   const res = selectResolution ? selectResolution.value : '1920x1080';
   const queueId = `Render-${Math.floor(Math.random() * 9000 + 1000)}`;
   
@@ -8347,6 +8317,8 @@ function handleExport() {
 
   // Send render request to server
   const vocalsUrl = state.frontVocalsAudioFile ? state.frontVocalsAudioFile.serverUrl : '';
+  const audioModeSelector = document.getElementById('audio-mode-selector');
+  const audioMode = audioModeSelector ? audioModeSelector.value : 'vocal-cut';
   
   fetch('/api/render', {
     method: 'POST',
@@ -8356,7 +8328,8 @@ function handleExport() {
     body: JSON.stringify({
       config: state.config,
       resolution: res,
-      vocalsUrl: vocalsUrl
+      vocalsUrl: vocalsUrl,
+      audioMode: audioMode
     })
   })
   .then(response => {
@@ -9112,88 +9085,53 @@ function setupFrontPageEventListeners() {
     try {
       logToConsole(`Processing audio file: ${file.name}`);
       
-      // 1. Automatically generate the instrumental track in browser!
-      let instBlob = null;
+      // Upload original audio track to server
+      let originalServerUrl = null;
       try {
-        instBlob = await generateInstrumental(file);
-        logToConsole(`Successfully split audio and generated instrumental track.`);
-      } catch (splitErr) {
-        logToConsole(`Error splitting audio: ${splitErr.message}. Loading original file directly.`);
-      }
-
-      // 2. Set backing track (instBlob if generated, else the original file)
-      let backingFileObj = instBlob ? new File([instBlob], `${file.name.replace(/\.[^/.]+$/, "")} (Instrumental).wav`, { type: 'audio/wav' }) : file;
-      let vocalsFileObj = file;
-
-      // 3. Stage 1: Upload backing track to server (or fallback to Blob URL)
-      let backingServerUrl = null;
-      try {
-        logToConsole(`Uploading instrumental backing track to server: ${backingFileObj.name}`);
+        logToConsole(`Uploading original audio track to server: ${file.name}`);
         const response = await fetch('/api/audio-library', {
           method: 'POST',
           headers: {
-            'x-filename': encodeURIComponent(backingFileObj.name)
+            'x-filename': encodeURIComponent(file.name)
           },
-          body: backingFileObj
+          body: file
         });
         if (response.ok) {
           const resData = await response.json();
-          backingServerUrl = '/audio_library/' + resData.filename;
+          originalServerUrl = '/audio_library/' + resData.filename;
         } else {
           throw new Error(await response.text());
         }
       } catch (uploadErr) {
-        logToConsole(`Instrumental upload failed: ${uploadErr.message}. Falling back to client-side Blob URL.`);
-        backingServerUrl = URL.createObjectURL(backingFileObj);
+        logToConsole(`Original audio upload failed: ${uploadErr.message}. Falling back to client-side Blob URL.`);
+        originalServerUrl = URL.createObjectURL(file);
       }
 
-      // 4. Stage 2: Upload vocal track to server (or fallback to Blob URL)
-      let vocalsServerUrl = null;
-      try {
-        logToConsole(`Uploading original vocal guide track to server: ${vocalsFileObj.name}`);
-        const response = await fetch('/api/audio-library', {
-          method: 'POST',
-          headers: {
-            'x-filename': encodeURIComponent(vocalsFileObj.name)
-          },
-          body: vocalsFileObj
-        });
-        if (response.ok) {
-          const resData = await response.json();
-          vocalsServerUrl = '/audio_library/' + resData.filename;
-        } else {
-          throw new Error(await response.text());
-        }
-      } catch (uploadErr) {
-        logToConsole(`Original vocal upload failed: ${uploadErr.message}. Falling back to client-side Blob URL.`);
-        vocalsServerUrl = URL.createObjectURL(vocalsFileObj);
-      }
-
-      // 5. Update state
+      // Update state to use the single original file for both backing and vocals
       state.frontAudioFile = {
-        name: backingFileObj.name,
-        size: backingFileObj.size,
-        type: backingFileObj.type,
+        name: file.name,
+        size: file.size,
+        type: file.type,
         isLocalPath: false,
-        serverUrl: backingServerUrl
+        serverUrl: originalServerUrl
       };
 
       state.frontVocalsAudioFile = {
-        name: vocalsFileObj.name,
-        size: vocalsFileObj.size,
-        type: vocalsFileObj.type,
+        name: file.name,
+        size: file.size,
+        type: file.type,
         isLocalPath: false,
-        serverUrl: vocalsServerUrl
+        serverUrl: originalServerUrl
       };
 
       // Update config audioUrl if present
       if (state.config && state.config.config) {
-        state.config.config.audioUrl = backingServerUrl;
+        state.config.config.audioUrl = originalServerUrl;
       }
 
       // Sync audio player to the Vocals track (Original) since audioVoiceEnabled is true!
       try {
-        window.setAudioSource(vocalsServerUrl);
+        window.setAudioSource(originalServerUrl);
         audio.loop = false;
         stopPlay(); // reset any previous play status
         logToConsole("Audio URL successfully generated and synced to player.");
@@ -9203,7 +9141,7 @@ function setupFrontPageEventListeners() {
 
       if (typeof saveActiveState === 'function') saveActiveState();
 
-      return { backingServerUrl, vocalsServerUrl };
+      return { backingServerUrl: originalServerUrl, vocalsServerUrl: originalServerUrl };
     } catch (err) {
       logToConsole(`Error inside processAndLoadAudioFile: ${err.message}`);
       throw err;
@@ -9594,22 +9532,95 @@ function setupFrontPageEventListeners() {
     const vocalSelection = vocalSelectionEl ? vocalSelectionEl.value : 'solo';
     state.vocalMode = vocalSelection;
     
+    function mergeCorrectedLyrics(newLyricsText, oldLyrics) {
+      const newLines = newLyricsText.split('\n')
+        .map(line => line.trim())
+        .filter(line => line !== '');
+        
+      if (oldLyrics && oldLyrics.length === newLines.length) {
+        return oldLyrics.map((oldLine, lineIdx) => {
+          const newLineText = newLines[lineIdx];
+          const containsChinese = /[\u4e00-\u9fa5]/.test(newLineText);
+          const newWords = containsChinese ? newLineText.split('') : newLineText.split(/\s+/).filter(w => w !== '');
+          
+          const oldWords = oldLine.words || [];
+          if (oldWords.length === newWords.length) {
+            const mergedWords = oldWords.map((oldW, wIdx) => ({
+              ...oldW,
+              word: cleanAndCapitalizeWord(newWords[wIdx])
+            }));
+            return {
+              ...oldLine,
+              words: mergedWords
+            };
+          } else {
+            const lineStart = oldWords.length > 0 ? oldWords[0].startTime : (lineIdx * 4.0);
+            const lineEnd = oldWords.length > 0 ? oldWords[oldWords.length - 1].endTime : (lineStart + 3.0);
+            const duration = lineEnd - lineStart;
+            const step = duration / Math.max(1, newWords.length);
+            
+            const mergedWords = newWords.map((word, wIdx) => ({
+              word: cleanAndCapitalizeWord(word),
+              startTime: lineStart + (wIdx * step),
+              endTime: lineStart + ((wIdx + 1) * step)
+            }));
+            return {
+              ...oldLine,
+              words: mergedWords
+            };
+          }
+        });
+      }
+      return null;
+    }
+
+    const prevConfig = state.config || {};
+    const prevSysConfig = prevConfig.config || {};
+    const prevOverlays = prevConfig.overlays || [];
+    const prevLyrics = prevConfig.lyrics || [];
+
+    let mergedLyrics = null;
+    if (prevLyrics.length > 0) {
+      mergedLyrics = mergeCorrectedLyrics(lyricsText, prevLyrics);
+    }
+
     state.config = {
       metadata: meta,
       config: {
-        bgType: "image",
-        bgUrl: "",
-        bgOverlayOpacity: 0.5,
-        stylePreset: "Cinematic",
-        fontFamily: "Arial",
-        audioFadeOutDuration: 4,
-        audioUrl: getAudioUrl(state.frontAudioFile)
+        bgType: prevSysConfig.bgType || "image",
+        bgUrl: prevSysConfig.bgUrl || "",
+        bgOverlayOpacity: prevSysConfig.bgOverlayOpacity !== undefined ? prevSysConfig.bgOverlayOpacity : 0.5,
+        stylePreset: prevSysConfig.stylePreset || "Cinematic",
+        fontFamily: prevSysConfig.fontFamily || "Arial",
+        fontSize: prevSysConfig.fontSize || 48,
+        fontColor: prevSysConfig.fontColor || '#06b6d4',
+        fontOpacity: prevSysConfig.fontOpacity !== undefined ? prevSysConfig.fontOpacity : 1.0,
+        fontShadow: prevSysConfig.fontShadow !== undefined ? prevSysConfig.fontShadow : 8,
+        titleTransition: prevSysConfig.titleTransition || 'fade',
+        audioFadeOutDuration: prevSysConfig.audioFadeOutDuration !== undefined ? prevSysConfig.audioFadeOutDuration : 4,
+        audioUrl: prevSysConfig.audioUrl || getAudioUrl(state.frontAudioFile),
+        imageBlocks: prevSysConfig.imageBlocks || [
+          {
+            id: 'img_default',
+            name: 'Default Background',
+            url: prevSysConfig.bgUrl || '',
+            startTime: 0,
+            endTime: state.duration
+          }
+        ],
+        overlayImages: prevSysConfig.overlayImages || []
       },
+      overlays: prevOverlays,
       lyrics: []
     };
 
-    // Load lyrics timing
-    alignPastedLyrics(lyricsText);
+    if (mergedLyrics) {
+      state.config.lyrics = mergedLyrics;
+      logToConsole("Lyrics corrected. Preserved existing timings.");
+    } else {
+      // Load lyrics timing
+      alignPastedLyrics(lyricsText);
+    }
 
     // Save bio segments to state
     state.config.tickerSegments = tickerSegments;
@@ -10461,6 +10472,24 @@ function setupStudioPanelControls() {
         saveProjectToDb();
       }
 
+      // Sync timeline state to front page setup inputs
+      if (state.config) {
+        if (state.config.metadata) {
+          const frontSongTitle = document.getElementById('front-song-title');
+          const frontSongArtist = document.getElementById('front-song-artist');
+          if (frontSongTitle) frontSongTitle.value = state.config.metadata.songName || '';
+          if (frontSongArtist) frontSongArtist.value = state.config.metadata.singerBand || '';
+        }
+        const lyricsSelfInput = document.getElementById('lyrics-self-input');
+        if (state.config.lyrics && lyricsSelfInput) {
+          const reconstructedLyrics = state.config.lyrics.map(line => {
+            return (line.words || []).map(w => w.word).join(' ');
+          }).join('\n');
+          lyricsSelfInput.value = reconstructedLyrics;
+          state.frontLyricsText = reconstructedLyrics;
+        }
+      }
+
       // Hide views, Show Project view
       creationPageView.style.display = 'none';
       frontPageView.style.display = 'flex';
@@ -10496,8 +10525,16 @@ function setupStudioPanelControls() {
                                 state.config.metadata && 
                                 state.config.metadata.songName === setupTitle && 
                                 state.config.metadata.singerBand === setupArtist;
-                                
-      if (!state.config || !isAlreadyMatching) {
+
+      const currentLyricsText = state.config && state.config.lyrics ? state.config.lyrics.map(line => {
+        return (line.words || []).map(w => w.word).join(' ');
+      }).join('\n').trim() : '';
+      
+      const lyricsSelfInput = document.getElementById('lyrics-self-input');
+      const newLyricsText = lyricsSelfInput ? lyricsSelfInput.value.trim() : '';
+      const lyricsChanged = currentLyricsText !== newLyricsText;
+      
+      if (!state.config || !isAlreadyMatching || lyricsChanged) {
         // Run transition/initialization first to sync custom files/state
         if (typeof window.transitionToCreationPage === 'function') {
           window.transitionToCreationPage();
@@ -10808,22 +10845,66 @@ function setupStudioPanelControls() {
   const studioFontSelector = document.getElementById('studio-font-selector');
   if (studioFontSelector) {
     studioFontSelector.addEventListener('change', (e) => {
-      state.config.config.fontFamily = e.target.value;
+      const val = e.target.value;
+      if (state.selectedItemType === 'overlay' && state.selectedItemIndex !== null && state.config.overlays) {
+        const ov = state.config.overlays[state.selectedItemIndex];
+        if (ov && ov.type === 'text') {
+          ov.fontFamily = val;
+        }
+      } else {
+        state.config.config.fontFamily = val;
+      }
+      state.hasUnsavedConfigChanges = true;
+      if (typeof window.updateSaveButtonColor === 'function') window.updateSaveButtonColor();
+      drawKaraokeFrame(state.currentTime);
       updateTimeline();
-      logToConsole(`Studio Controls: Primary font family updated to "${e.target.value}".`);
+      logToConsole(`Studio Controls: Font family updated to "${val}".`);
     });
   }
 
-  // Font color swatches bindings
+  // Font color picker and swatches bindings
+  const fontColorPicker = document.getElementById('studio-font-color-picker');
+  if (fontColorPicker) {
+    fontColorPicker.addEventListener('input', (e) => {
+      const selectedColor = e.target.value;
+      if (state.selectedItemType === 'overlay' && state.selectedItemIndex !== null && state.config.overlays) {
+        const ov = state.config.overlays[state.selectedItemIndex];
+        if (ov && ov.type === 'text') {
+          ov.fontColor = selectedColor;
+        }
+      } else {
+        state.config.config.fontColor = selectedColor;
+      }
+      document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('active'));
+      logToConsole(`Studio Controls: Accent color updated to ${selectedColor}.`);
+      state.hasUnsavedConfigChanges = true;
+      if (typeof window.updateSaveButtonColor === 'function') window.updateSaveButtonColor();
+      drawKaraokeFrame(state.currentTime);
+      updateTimeline();
+    });
+  }
+
   document.querySelectorAll('.color-swatch').forEach(swatch => {
     swatch.addEventListener('click', (e) => {
       document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('active'));
       swatch.classList.add('active');
       
       const selectedColor = swatch.dataset.color;
-      state.config.config.fontColor = selectedColor;
+      if (state.selectedItemType === 'overlay' && state.selectedItemIndex !== null && state.config.overlays) {
+        const ov = state.config.overlays[state.selectedItemIndex];
+        if (ov && ov.type === 'text') {
+          ov.fontColor = selectedColor;
+        }
+      } else {
+        state.config.config.fontColor = selectedColor;
+      }
       
-      logToConsole(`Studio Controls: Accent sweep color updated to ${selectedColor}.`);
+      if (fontColorPicker) fontColorPicker.value = selectedColor;
+      
+      logToConsole(`Studio Controls: Accent color updated to ${selectedColor}.`);
+      state.hasUnsavedConfigChanges = true;
+      if (typeof window.updateSaveButtonColor === 'function') window.updateSaveButtonColor();
+      drawKaraokeFrame(state.currentTime);
       updateTimeline();
     });
   });
@@ -10835,7 +10916,19 @@ function setupStudioPanelControls() {
     studioFontOpacity.addEventListener('input', (e) => {
       const val = parseInt(e.target.value);
       studioOpacityVal.innerText = val;
-      state.config.config.fontOpacity = val / 100;
+      const floatVal = val / 100;
+      
+      if (state.selectedItemType === 'overlay' && state.selectedItemIndex !== null && state.config.overlays) {
+        const ov = state.config.overlays[state.selectedItemIndex];
+        if (ov && ov.type === 'text') {
+          ov.opacity = floatVal;
+        }
+      } else {
+        state.config.config.fontOpacity = floatVal;
+      }
+      state.hasUnsavedConfigChanges = true;
+      if (typeof window.updateSaveButtonColor === 'function') window.updateSaveButtonColor();
+      drawKaraokeFrame(state.currentTime);
     });
   }
 
@@ -10846,7 +10939,18 @@ function setupStudioPanelControls() {
     studioFontShadow.addEventListener('input', (e) => {
       const val = parseInt(e.target.value);
       studioShadowVal.innerText = val;
-      state.config.config.fontShadow = val;
+      
+      if (state.selectedItemType === 'overlay' && state.selectedItemIndex !== null && state.config.overlays) {
+        const ov = state.config.overlays[state.selectedItemIndex];
+        if (ov && ov.type === 'text') {
+          ov.shadow = val;
+        }
+      } else {
+        state.config.config.fontShadow = val;
+      }
+      state.hasUnsavedConfigChanges = true;
+      if (typeof window.updateSaveButtonColor === 'function') window.updateSaveButtonColor();
+      drawKaraokeFrame(state.currentTime);
     });
   }
 
@@ -10854,91 +10958,107 @@ function setupStudioPanelControls() {
   const studioTitleTransition = document.getElementById('studio-title-transition');
   if (studioTitleTransition) {
     studioTitleTransition.addEventListener('change', (e) => {
-      state.config.config.titleTransition = e.target.value;
-      logToConsole(`Studio Controls: Title Card transition animation configured: ${e.target.value.toUpperCase()}`);
+      const val = e.target.value;
+      if (state.selectedItemType === 'overlay' && state.selectedItemIndex !== null && state.config.overlays) {
+        const ov = state.config.overlays[state.selectedItemIndex];
+        if (ov && ov.type === 'text') {
+          ov.transition = val;
+        }
+      } else {
+        state.config.config.titleTransition = val;
+      }
+      state.hasUnsavedConfigChanges = true;
+      if (typeof window.updateSaveButtonColor === 'function') window.updateSaveButtonColor();
+      drawKaraokeFrame(state.currentTime);
+      logToConsole(`Studio Controls: Transition updated to: ${val.toUpperCase()}`);
     });
   }
 
-  // Live Title and Artist inputs sync
+  // Live Title input sync (single textbox/textarea)
   const studioTitleInput = document.getElementById('studio-title-input');
-  const studioArtistInput = document.getElementById('studio-artist-input');
-  
   if (studioTitleInput) {
     studioTitleInput.addEventListener('input', (e) => {
       const val = e.target.value;
-      if (state.config && state.config.metadata) {
-        state.config.metadata.songName = val;
-        
-        // Sync to setup page input
-        const frontSongTitle = document.getElementById('front-song-title');
-        if (frontSongTitle) frontSongTitle.value = val;
-        if (typeof window.updateSongNameBoxes === 'function') window.updateSongNameBoxes();
-        
-        // Sync default title-card content
-        const tc = (state.config.overlays || []).find(o => o.type === 'title-card');
-        if (tc) {
-          tc.content = `${state.config.metadata.songName} - ${state.config.metadata.singerBand}`;
+      if (state.selectedItemType === 'overlay' && state.selectedItemIndex !== null && state.config.overlays) {
+        const ov = state.config.overlays[state.selectedItemIndex];
+        if (ov && ov.type === 'text') {
+          ov.text = val;
+          ov.content = val;
         }
-        
-        // Update header title if present
-        const displayProjectName = document.getElementById('display-project-name');
-        if (displayProjectName) displayProjectName.innerText = val;
-
-        state.hasUnsavedConfigChanges = true;
-        drawKaraokeFrame(state.currentTime);
-      }
-    });
-  }
-
-  if (studioArtistInput) {
-    studioArtistInput.addEventListener('input', (e) => {
-      const val = e.target.value;
-      if (state.config && state.config.metadata) {
-        state.config.metadata.singerBand = val;
-        
-        // Sync to setup page input
-        const frontSongArtist = document.getElementById('front-song-artist');
-        if (frontSongArtist) frontSongArtist.value = val;
-        if (typeof window.updateSongNameBoxes === 'function') window.updateSongNameBoxes();
-        
-        // Sync default title-card content
-        const tc = (state.config.overlays || []).find(o => o.type === 'title-card');
-        if (tc) {
-          tc.content = `${state.config.metadata.songName} - ${state.config.metadata.singerBand}`;
+      } else {
+        if (state.config && state.config.metadata) {
+          state.config.metadata.songName = val;
+          
+          // Sync to setup page input
+          const frontSongTitle = document.getElementById('front-song-title');
+          if (frontSongTitle) frontSongTitle.value = val;
+          if (typeof window.updateSongNameBoxes === 'function') window.updateSongNameBoxes();
+          
+          // Sync default title-card content
+          const tc = (state.config.overlays || []).find(o => o.type === 'title-card');
+          if (tc) {
+            tc.content = val;
+            tc.text = val;
+          }
+          
+          // Update header title if present
+          const displayProjectName = document.getElementById('display-project-name');
+          if (displayProjectName) displayProjectName.innerText = val;
         }
-
-        state.hasUnsavedConfigChanges = true;
-        drawKaraokeFrame(state.currentTime);
       }
-    });
-  }
-
-  // Color Swatch Swapping Sync with Color Picker
-  const fontColorPicker = document.getElementById('studio-font-color-picker');
-  if (fontColorPicker) {
-    fontColorPicker.addEventListener('input', (e) => {
-      const selectedColor = e.target.value;
-      state.config.config.fontColor = selectedColor;
-      document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('active'));
-      logToConsole(`Studio Controls: Accent sweep color updated to ${selectedColor} via color picker.`);
+      state.hasUnsavedConfigChanges = true;
+      if (typeof window.updateSaveButtonColor === 'function') window.updateSaveButtonColor();
+      drawKaraokeFrame(state.currentTime);
       updateTimeline();
     });
   }
 
-  // Refactor swatch click handler to also update custom color picker
-  document.querySelectorAll('.color-swatch').forEach(swatch => {
-    swatch.addEventListener('click', (e) => {
-      document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('active'));
-      swatch.classList.add('active');
+  // Insert button handler for Fonts & Styles column
+  const btnStudioInsertTextOverlay = document.getElementById('btn-studio-insert-text-overlay');
+  if (btnStudioInsertTextOverlay) {
+    btnStudioInsertTextOverlay.addEventListener('click', () => {
+      if (!state.config) {
+        alert("Please create or import a project first!");
+        return;
+      }
+      const msgText = studioTitleInput ? studioTitleInput.value.trim() : '';
+      if (!msgText) {
+        alert("Please type a message in the input box first!");
+        return;
+      }
+      if (!state.config.overlays) state.config.overlays = [];
+      const playheadTime = state.currentTime || 0;
       
-      const selectedColor = swatch.dataset.color;
-      state.config.config.fontColor = selectedColor;
-      if (fontColorPicker) fontColorPicker.value = selectedColor;
+      const newOverlay = {
+        id: `overlay_text_${Date.now()}`,
+        type: 'text',
+        text: msgText,
+        content: msgText,
+        startTime: playheadTime,
+        endTime: Math.min(state.duration || 60, playheadTime + 5.0),
+        x: 340,
+        y: 110,
+        width: 600,
+        height: 80,
+        fontFamily: studioFontSelector ? studioFontSelector.value : 'system-ui',
+        fontSize: studioFontSizeInput ? parseInt(studioFontSizeInput.value) : 24,
+        fontColor: fontColorPicker ? fontColorPicker.value : '#ffffff',
+        opacity: studioFontOpacity ? parseInt(studioFontOpacity.value) / 100 : 1.0,
+        shadow: studioFontShadow ? parseInt(studioFontShadow.value) : 8,
+        transition: studioTitleTransition ? studioTitleTransition.value : 'fade',
+        transparentBox: true
+      };
       
-      logToConsole(`Studio Controls: Accent sweep color updated to ${selectedColor}.`);
-      updateTimeline();
+      state.config.overlays.push(newOverlay);
+      state.hasUnsavedConfigChanges = true;
+      if (typeof window.updateSaveButtonColor === 'function') window.updateSaveButtonColor();
+      drawKaraokeFrame(state.currentTime);
+      if (typeof updateTimeline === 'function') updateTimeline();
+      logToConsole(`Overlay: Inserted message "${msgText}" at ${playheadTime.toFixed(1)}s`);
     });
-  });
+  }
+
+  // Redundant swatches and color picker listeners removed (merged above)
 
   // Lyric Editor ContentEditable scroll sync, sync state, and Insert row button
   const lyricTextCol = document.getElementById('studio-lyric-text-col');
@@ -11473,6 +11593,46 @@ function setupStudioPanelControls() {
     });
   }
   
+  const imageOverlayWorkspace = document.getElementById('image-overlay-workspace');
+  if (imageOverlayWorkspace) {
+    imageOverlayWorkspace.addEventListener('dragover', (e) => {
+      e.preventDefault();
+    });
+    imageOverlayWorkspace.addEventListener('drop', (e) => {
+      e.preventDefault();
+      try {
+        const dragData = JSON.parse(e.dataTransfer.getData('application/json'));
+        if (dragData && dragData.url) {
+          const rect = imageOverlayWorkspace.getBoundingClientRect();
+          const dropX = e.clientX - rect.left;
+          const dropTime = Math.max(0, Math.min(state.duration, dropX / state.zoom));
+          
+          if (!state.config.config.overlayImages) state.config.config.overlayImages = [];
+          
+          const newBlock = {
+            id: 'img_' + Date.now() + '_' + Math.floor(Math.random() * 100),
+            name: dragData.name || 'Dropped Image',
+            url: dragData.url,
+            startTime: dropTime,
+            endTime: Math.min(state.duration, dropTime + 5.0),
+            x: 200,
+            y: 150,
+            width: 300,
+            height: 200
+          };
+          
+          state.config.config.overlayImages.push(newBlock);
+          state.config.config.overlayImages.sort((a, b) => a.startTime - b.startTime);
+          
+          updateTimeline();
+          logToConsole(`[Image Track] Dropped image "${newBlock.name}" at ${dropTime.toFixed(2)}s.`);
+        }
+      } catch (err) {
+        logToConsole(`[Image Track] Error dropping image: ${err.message}`);
+      }
+    });
+  }
+  
   if (overlayWorkspace) {
     overlayWorkspace.addEventListener('dragover', (e) => {
       e.preventDefault();
@@ -11761,123 +11921,7 @@ function setupStudioPanelControls() {
     });
   }
 
-  // Quick Overlay / Message Panel (2 Rows) Listeners
-  const btnStudioQuickInsert = document.getElementById('btn-studio-quick-insert');
-  const studioQuickMsgInput = document.getElementById('studio-quick-msg-input');
-  const studioQuickMsgFont = document.getElementById('studio-quick-msg-font');
-  const studioQuickMsgSize = document.getElementById('studio-quick-msg-size');
-  const studioQuickMsgColor = document.getElementById('studio-quick-msg-color');
-  const studioQuickMsgTransparent = document.getElementById('studio-quick-msg-transparent');
-
-  if (btnStudioQuickInsert && studioQuickMsgInput) {
-    btnStudioQuickInsert.addEventListener('click', () => {
-      if (!state.config) {
-        alert("Please create or import a project first!");
-        return;
-      }
-      const msgText = studioQuickMsgInput.value.trim();
-      if (!msgText) {
-        alert("Please type a message first!");
-        return;
-      }
-      if (!state.config.overlays) state.config.overlays = [];
-      const playheadTime = state.currentTime || 0;
-      
-      const newOverlay = {
-        id: `overlay_text_${Date.now()}`,
-        type: 'text',
-        text: msgText,
-        content: msgText,
-        startTime: playheadTime,
-        endTime: Math.min(state.duration || 60, playheadTime + 5.0),
-        x: 340,
-        y: 110,
-        width: 600,
-        height: 80,
-        fontFamily: studioQuickMsgFont ? studioQuickMsgFont.value : 'system-ui',
-        fontSize: studioQuickMsgSize ? parseInt(studioQuickMsgSize.value) : 24,
-        fontColor: studioQuickMsgColor ? studioQuickMsgColor.value : '#ffffff',
-        transparentBox: studioQuickMsgTransparent ? studioQuickMsgTransparent.checked : true
-      };
-      
-      state.config.overlays.push(newOverlay);
-      studioQuickMsgInput.value = '';
-      state.hasUnsavedConfigChanges = true;
-      if (typeof window.updateSaveButtonColor === 'function') window.updateSaveButtonColor();
-      drawKaraokeFrame(state.currentTime);
-      if (typeof updateTimeline === 'function') updateTimeline();
-      logToConsole(`Quick Overlay: Inserted message "${msgText}" at ${playheadTime.toFixed(1)}s`);
-    });
-
-    studioQuickMsgInput.addEventListener('input', () => {
-      if (state.selectedItemType === 'overlay' && state.selectedItemIndex !== null && state.config.overlays) {
-        const ov = state.config.overlays[state.selectedItemIndex];
-        if (ov && ov.type === 'text') {
-          ov.text = studioQuickMsgInput.value;
-          ov.content = studioQuickMsgInput.value;
-          state.hasUnsavedConfigChanges = true;
-          if (typeof window.updateSaveButtonColor === 'function') window.updateSaveButtonColor();
-          drawKaraokeFrame(state.currentTime);
-        }
-      }
-    });
-
-    if (studioQuickMsgFont) {
-      studioQuickMsgFont.addEventListener('change', () => {
-        if (state.selectedItemType === 'overlay' && state.selectedItemIndex !== null && state.config.overlays) {
-          const ov = state.config.overlays[state.selectedItemIndex];
-          if (ov && ov.type === 'text') {
-            ov.fontFamily = studioQuickMsgFont.value;
-            state.hasUnsavedConfigChanges = true;
-            if (typeof window.updateSaveButtonColor === 'function') window.updateSaveButtonColor();
-            drawKaraokeFrame(state.currentTime);
-          }
-        }
-      });
-    }
-
-    if (studioQuickMsgSize) {
-      studioQuickMsgSize.addEventListener('input', () => {
-        if (state.selectedItemType === 'overlay' && state.selectedItemIndex !== null && state.config.overlays) {
-          const ov = state.config.overlays[state.selectedItemIndex];
-          if (ov && ov.type === 'text') {
-            ov.fontSize = parseInt(studioQuickMsgSize.value) || 24;
-            state.hasUnsavedConfigChanges = true;
-            if (typeof window.updateSaveButtonColor === 'function') window.updateSaveButtonColor();
-            drawKaraokeFrame(state.currentTime);
-          }
-        }
-      });
-    }
-
-    if (studioQuickMsgColor) {
-      studioQuickMsgColor.addEventListener('input', () => {
-        if (state.selectedItemType === 'overlay' && state.selectedItemIndex !== null && state.config.overlays) {
-          const ov = state.config.overlays[state.selectedItemIndex];
-          if (ov && ov.type === 'text') {
-            ov.fontColor = studioQuickMsgColor.value;
-            state.hasUnsavedConfigChanges = true;
-            if (typeof window.updateSaveButtonColor === 'function') window.updateSaveButtonColor();
-            drawKaraokeFrame(state.currentTime);
-          }
-        }
-      });
-    }
-
-    if (studioQuickMsgTransparent) {
-      studioQuickMsgTransparent.addEventListener('change', () => {
-        if (state.selectedItemType === 'overlay' && state.selectedItemIndex !== null && state.config.overlays) {
-          const ov = state.config.overlays[state.selectedItemIndex];
-          if (ov && ov.type === 'text') {
-            ov.transparentBox = studioQuickMsgTransparent.checked;
-            state.hasUnsavedConfigChanges = true;
-            if (typeof window.updateSaveButtonColor === 'function') window.updateSaveButtonColor();
-            drawKaraokeFrame(state.currentTime);
-          }
-        }
-      });
-    }
-  }
+  // Quick text listeners removed (functionality merged to Fonts & Styles)
 }
 
 // --- Canvas Selection, Dragging, & Resizing Interaction Events ---
