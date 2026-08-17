@@ -482,7 +482,8 @@ const server = http.createServer((req, res) => {
       try {
         const data = JSON.parse(body);
         const config = data.config;
-        const resolution = data.resolution || '1920x1080';
+        const resolution = data.resolution || '1280x720';
+        const duration = parseFloat(data.duration) || 180;
         
         if (!config || !config.config) {
           res.writeHead(400, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
@@ -574,6 +575,7 @@ const server = http.createServer((req, res) => {
         // Spawn Karaoke Render
         const argsKaraoke = [
           '-y',
+          '-threads', '1',
           '-i', safeAudioPath,
           ...videoInput,
           '-filter_complex', filterComplex,
@@ -585,8 +587,9 @@ const server = http.createServer((req, res) => {
         }
         argsKaraoke.push(
           '-c:v', 'libx264',
+          '-preset', 'ultrafast',
           '-pix_fmt', 'yuv420p',
-          '-shortest',
+          '-t', duration.toString(),
           outKaraokePath
         );
         
@@ -601,14 +604,16 @@ const server = http.createServer((req, res) => {
           // Spawn Original Vocals Render (always plays original vocals, uses videoInput)
           const argsOriginal = [
             '-y',
+            '-threads', '1',
             '-i', safeVocalsPath,
             ...videoInput,
             '-filter_complex', filterComplex,
             '-map', '[v_sub]',
             '-map', '0:a',
             '-c:v', 'libx264',
+            '-preset', 'ultrafast',
             '-pix_fmt', 'yuv420p',
-            '-shortest',
+            '-t', duration.toString(),
             outOriginalPath
           ];
           
