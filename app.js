@@ -679,7 +679,7 @@ function checkUnsavedChanges() {
     keepCustomLyrics: state.keepCustomLyrics
   };
   
-  const savedState = existingProj.stateData;
+  const savedState = existingProj.stateData || {};
   const isMatch = (
     curState.titleVal === savedState.titleVal &&
     curState.artistVal === savedState.artistVal &&
@@ -2959,7 +2959,7 @@ function updateTimeline() {
       
       sentenceBox.style.left = `${left}px`;
       sentenceBox.style.width = `${width}px`;
-      sentenceBox.style.fontFamily = state.config.config.fontFamily;
+      sentenceBox.style.fontFamily = (state.config && state.config.config) ? state.config.config.fontFamily : 'Arial';
       
       // Full Sentence label
       const containsChinese = /[\u4e00-\u9fa5]/.test(line.words.map(w => w.word).join(''));
@@ -3929,40 +3929,44 @@ window.renderLyricsGrid = function() {
         : `Align start time to current playhead (${formatSecs(state.currentTime)}). Currently: ${formatSecs(lineStart)}`;
       
       btnArrow.addEventListener('click', (e) => {
-        e.preventDefault();
-        if (line.aligned) {
-          line.aligned = false;
-          if (line.words && line.words.length > 0) {
-            const oldStart = line.words[0].startTime;
-            const delta = 0 - oldStart;
-            line.words.forEach(w => {
-              w.startTime += delta;
-              w.endTime += delta;
-            });
-          }
-          logToConsole(`Reset line ${index + 1} back to unaligned state.`);
-        } else {
-          const currentPlayheadTime = state.currentTime;
-          if (line.words && line.words.length > 0) {
-            const oldStart = line.words[0].startTime;
-            const delta = currentPlayheadTime - oldStart;
-            line.words.forEach(w => {
-              w.startTime += delta;
-              w.endTime += delta;
-            });
-            logToConsole(`Aligned line ${index + 1} to current playhead time: ${formatSecs(currentPlayheadTime)}`);
+        try {
+          e.preventDefault();
+          if (line.aligned) {
+            line.aligned = false;
+            if (line.words && line.words.length > 0) {
+              const oldStart = line.words[0].startTime;
+              const delta = 0 - oldStart;
+              line.words.forEach(w => {
+                w.startTime += delta;
+                w.endTime += delta;
+              });
+            }
+            logToConsole(`Reset line ${index + 1} back to unaligned state.`);
           } else {
-            line.words = [{ word: '', startTime: currentPlayheadTime, endTime: currentPlayheadTime + 2 }];
+            const currentPlayheadTime = state.currentTime;
+            if (line.words && line.words.length > 0) {
+              const oldStart = line.words[0].startTime;
+              const delta = currentPlayheadTime - oldStart;
+              line.words.forEach(w => {
+                w.startTime += delta;
+                w.endTime += delta;
+              });
+              logToConsole(`Aligned line ${index + 1} to current playhead time: ${formatSecs(currentPlayheadTime)}`);
+            } else {
+              line.words = [{ word: '', startTime: currentPlayheadTime, endTime: currentPlayheadTime + 2 }];
+            }
+            line.aligned = true;
           }
-          line.aligned = true;
+          state.hasUnsavedConfigChanges = true;
+          if (typeof updateSaveButtonColor === 'function') updateSaveButtonColor();
+          saveActiveState();
+          updateTimeline();
+          updatePromptPreview();
+          if (typeof populateLyricEditorTextarea === 'function') populateLyricEditorTextarea();
+          renderLyricsGrid();
+        } catch (err) {
+          console.error("Error aligning lyric line:", err);
         }
-        state.hasUnsavedConfigChanges = true;
-        if (typeof updateSaveButtonColor === 'function') updateSaveButtonColor();
-        saveActiveState();
-        updateTimeline();
-        updatePromptPreview();
-        if (typeof populateLyricEditorTextarea === 'function') populateLyricEditorTextarea();
-        renderLyricsGrid();
       });
     }
     
@@ -4670,23 +4674,41 @@ function drawKaraokeFrame(time) {
   const leadLines = state.config.lyrics.filter(line => line.speaker !== 'duet' && line.speaker !== 'duet_a' && line.speaker !== 'duet_b');
   const duetLines = state.config.lyrics.filter(line => line.speaker === 'duet' || line.speaker === 'duet_a' || line.speaker === 'duet_b');
 
+  // Get active lead lines + the first upcoming future line
   const activeLeadLines = leadLines.filter(line => {
     if (line.words.length === 0) return false;
     const lineStart = line.words[0].startTime;
     const lineEnd = line.words[line.words.length - 1].endTime;
     return time >= lineStart - 3.0 && time <= lineEnd + 1.5;
   });
+  const nextLeadLine = leadLines.find(line => {
+    if (line.words.length === 0) return false;
+    const lineStart = line.words[0].startTime;
+    return time < lineStart - 3.0;
+  });
+  if (nextLeadLine && !activeLeadLines.includes(nextLeadLine)) {
+    activeLeadLines.push(nextLeadLine);
+  }
 
+  // Get active duet lines + the first upcoming future line
   const activeDuetLines = duetLines.filter(line => {
     if (line.words.length === 0) return false;
     const lineStart = line.words[0].startTime;
     const lineEnd = line.words[line.words.length - 1].endTime;
     return time >= lineStart - 3.0 && time <= lineEnd + 1.5;
   });
+  const nextDuetLine = duetLines.find(line => {
+    if (line.words.length === 0) return false;
+    const lineStart = line.words[0].startTime;
+    return time < lineStart - 3.0;
+  });
+  if (nextDuetLine && !activeDuetLines.includes(nextDuetLine)) {
+    activeDuetLines.push(nextDuetLine);
+  }
 
   const drawLyricLine = (line, textY) => {
     ctx.textAlign = 'center';
-    const font = state.config.config.fontFamily || 'Arial';
+    const font = (state.config && state.config.config) ? (state.config.config.fontFamily || 'Arial') : 'Arial';
     ctx.font = `normal 48px "${font}"`;
 
     const words = line.words;
@@ -4702,10 +4724,14 @@ function drawKaraokeFrame(time) {
     const lineEnd = words[words.length - 1].endTime;
     let opacity = 1.0;
     
-    if (time >= lineStart - 3.0 && time < lineStart - 2.5) {
-      opacity = (time - (lineStart - 3.0)) / 0.5;
+    if (time < lineStart - 3.0) {
+      opacity = 0.5; // Dimmed lookahead for upcoming future lyrics
+    } else if (time >= lineStart - 3.0 && time < lineStart - 2.5) {
+      opacity = 0.5 + 0.5 * ((time - (lineStart - 3.0)) / 0.5); // smoothly fade in from 0.5 to 1.0
     } else if (time > lineEnd + 0.5 && time <= lineEnd + 1.5) {
-      opacity = 1.0 - (time - (lineEnd + 0.5)) / 1.0;
+      opacity = 1.0 - (time - (lineEnd + 0.5)) / 1.0; // fade out
+    } else if (time > lineEnd + 1.5) {
+      opacity = 0.0;
     }
 
     ctx.save();
@@ -7123,25 +7149,29 @@ function setupFrontPageEventListeners() {
   const toggleBtn = document.getElementById('btn-toggle-raw-lyrics');
   if (toggleBtn) {
     toggleBtn.addEventListener('click', (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-      
-      const rawLyrics = document.getElementById('lyrics-self-input').value;
-      if (state.lyricsEditMode === 'raw' && rawLyrics.trim() === '') {
-        alert("Please paste or type some lyrics first to switch to the Grid Table!");
-        return;
+      try {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        const rawLyrics = document.getElementById('lyrics-self-input').value;
+        if (state.lyricsEditMode === 'raw' && rawLyrics.trim() === '') {
+          alert("Please paste or type some lyrics first to switch to the Grid Table!");
+          return;
+        }
+        
+        state.lyricsEditMode = state.lyricsEditMode === 'raw' ? 'grid' : 'raw';
+        
+        if (state.lyricsEditMode === 'grid') {
+          alignPastedLyrics(rawLyrics);
+          populateLyricEditorTextarea();
+          updateStudioLyricsTable();
+          if (typeof updateTimeline === 'function') updateTimeline();
+        }
+        
+        renderLyricsGrid();
+      } catch (err) {
+        console.error("Error toggling raw lyrics mode:", err);
       }
-      
-      state.lyricsEditMode = state.lyricsEditMode === 'raw' ? 'grid' : 'raw';
-      
-      if (state.lyricsEditMode === 'grid') {
-        alignPastedLyrics(rawLyrics);
-        populateLyricEditorTextarea();
-        updateStudioLyricsTable();
-        if (typeof updateTimeline === 'function') updateTimeline();
-      }
-      
-      renderLyricsGrid();
     });
   }
 
@@ -8789,7 +8819,7 @@ function setupStudioPanelControls() {
     { id: 'steam', name: '☕ Coffee Steam' }
   ];
 
-  const overlayDropdownBtn = document.getElementById('studio-overlay-dropdown-btn');
+  const overlayDropdownBtn = document.getElementById('btn-studio-overlay-popup-trigger');
   const overlayPopupMenu = document.getElementById('studio-overlay-popup-menu');
   
   function renderOverlayPopupMenu() {
@@ -8830,7 +8860,11 @@ function setupStudioPanelControls() {
         state.config.overlays.push(newOv);
         state.config.overlays.sort((a, b) => a.startTime - b.startTime);
         
+        state.hasUnsavedConfigChanges = true;
+        if (typeof window.updateSaveButtonColor === 'function') window.updateSaveButtonColor();
+        saveActiveState();
         updateTimeline();
+        drawKaraokeFrame(state.currentTime);
         logToConsole(`[VFX Layer] Inserted VFX block "${ovOpt.name.toUpperCase()}" on Track 4 at ${state.currentTime.toFixed(2)}s.`);
       });
       item.appendChild(nameSpan);
@@ -8904,7 +8938,11 @@ function setupStudioPanelControls() {
       state.config.overlays.push(newMsg);
       state.config.overlays.sort((a, b) => a.startTime - b.startTime);
       
+      state.hasUnsavedConfigChanges = true;
+      if (typeof window.updateSaveButtonColor === 'function') window.updateSaveButtonColor();
+      saveActiveState();
       updateTimeline();
+      drawKaraokeFrame(state.currentTime);
       logToConsole(`[Ad/Message Layer] Placed custom message block on Track 4 at ${state.currentTime.toFixed(2)}s.`);
       
       studioMsgInput.value = '';
