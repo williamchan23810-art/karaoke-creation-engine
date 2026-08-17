@@ -7863,19 +7863,29 @@ function setupStudioPanelControls() {
       const handleSelect = () => {
         if (!state.config.config.imageBlocks) state.config.config.imageBlocks = [];
         
-        const newBlock = {
-          id: 'img_' + Date.now() + '_' + Math.floor(Math.random() * 100),
-          name: img.name,
-          url: img.url,
-          startTime: state.currentTime,
-          endTime: Math.min(state.duration, state.currentTime + 5.0) // default 5s
-        };
-        
-        state.config.config.imageBlocks.push(newBlock);
-        state.config.config.imageBlocks.sort((a, b) => a.startTime - b.startTime);
+        // If we only have the default background block and its url is empty,
+        // set it as the default background for the entire song duration.
+        const defaultBlock = state.config.config.imageBlocks.find(b => b.id === 'img_default');
+        if (defaultBlock && !defaultBlock.url) {
+          defaultBlock.url = img.url;
+          defaultBlock.name = img.name;
+          state.config.config.bgUrl = img.url;
+          logToConsole(`[Image Library] Updated default background image to "${img.name}" for the entire song.`);
+        } else {
+          const newBlock = {
+            id: 'img_' + Date.now() + '_' + Math.floor(Math.random() * 100),
+            name: img.name,
+            url: img.url,
+            startTime: state.currentTime,
+            endTime: Math.min(state.duration, state.currentTime + 5.0) // default 5s
+          };
+          state.config.config.imageBlocks.push(newBlock);
+          state.config.config.imageBlocks.sort((a, b) => a.startTime - b.startTime);
+          logToConsole(`[Image Library] Selected & Inserted "${img.name}" at ${state.currentTime.toFixed(2)}s.`);
+        }
         
         updateTimeline();
-        logToConsole(`[Image Library] Selected & Inserted "${img.name}" at ${state.currentTime.toFixed(2)}s.`);
+        if (typeof saveActiveState === 'function') saveActiveState();
         imageLibraryModal.style.display = 'none';
       };
 

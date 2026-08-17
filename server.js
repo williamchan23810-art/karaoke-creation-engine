@@ -573,6 +573,25 @@ const server = http.createServer((req, res) => {
           audioFilters.push('pan=stereo|c0=c0|c1=c0');
         }
  
+        let ffmpegProcess1 = null;
+        let ffmpegProcess2 = null;
+        let isTimedOut = false;
+
+        const killTimeout = setTimeout(() => {
+          isTimedOut = true;
+          console.error("FFmpeg render timed out (90s limit)! Killing processes...");
+          if (ffmpegProcess1) {
+            try { ffmpegProcess1.kill('SIGKILL'); } catch(e){}
+          }
+          if (ffmpegProcess2) {
+            try { ffmpegProcess2.kill('SIGKILL'); } catch(e){}
+          }
+          if (!res.writableEnded) {
+            res.writeHead(504, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+            res.end(JSON.stringify({ error: "Render timed out (90 seconds limit). Try using a shorter audio file or lower resolution." }));
+          }
+        }, 90000);
+
         const runOriginal = (karaokeUrl = null) => {
           const argsOriginal = [
             '-y',
@@ -591,6 +610,7 @@ const server = http.createServer((req, res) => {
           
           console.log("FFmpeg Original args:", argsOriginal.join(' '));
           const ffmpegOriginal = spawn(ffmpegPath, argsOriginal);
+          ffmpegProcess2 = ffmpegOriginal;
           
           ffmpegOriginal.stdout.on('data', (chunk) => {
             console.log(`[FFmpeg Original stdout] ${chunk.toString()}`);
@@ -601,6 +621,8 @@ const server = http.createServer((req, res) => {
           
           ffmpegOriginal.on('close', (code2) => {
             console.log(`FFmpeg Original finished with code ${code2}`);
+            if (isTimedOut) return;
+            clearTimeout(killTimeout);
             res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
             res.end(JSON.stringify({
               success: true,
@@ -611,6 +633,8 @@ const server = http.createServer((req, res) => {
           
           ffmpegOriginal.on('error', (err) => {
             console.error("FFmpeg Original start error:", err);
+            if (isTimedOut) return;
+            clearTimeout(killTimeout);
             res.writeHead(500, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
             res.end(JSON.stringify({ error: `Original render failed: ${err.message}` }));
           });
@@ -644,6 +668,7 @@ const server = http.createServer((req, res) => {
           console.log("FFmpeg Karaoke args:", argsKaraoke.join(' '));
           
           const ffmpegKaraoke = spawn(ffmpegPath, argsKaraoke);
+          ffmpegProcess1 = ffmpegKaraoke;
           
           ffmpegKaraoke.stdout.on('data', (chunk) => {
             console.log(`[FFmpeg Karaoke stdout] ${chunk.toString()}`);
@@ -654,9 +679,11 @@ const server = http.createServer((req, res) => {
           
           ffmpegKaraoke.on('close', (code1) => {
             console.log(`FFmpeg Karaoke finished with code ${code1}`);
+            if (isTimedOut) return;
             if (exportMode === 'both') {
               runOriginal(`/exports/${outKaraokeName}`);
             } else {
+              clearTimeout(killTimeout);
               res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
               res.end(JSON.stringify({
                 success: true,
@@ -668,6 +695,8 @@ const server = http.createServer((req, res) => {
           
           ffmpegKaraoke.on('error', (err) => {
             console.error("FFmpeg Karaoke start error:", err);
+            if (isTimedOut) return;
+            clearTimeout(killTimeout);
             res.writeHead(500, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
             res.end(JSON.stringify({ error: `Karaoke render failed: ${err.message}` }));
           });
