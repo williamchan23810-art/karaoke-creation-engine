@@ -5536,6 +5536,8 @@ function handleExport() {
   const audioModeSelector = document.getElementById('audio-mode-selector');
   const audioMode = audioModeSelector ? audioModeSelector.value : 'vocal-cut';
   
+  const exportMode = state.audioVoiceEnabled ? 'original' : 'karaoke';
+
   fetch('/api/render', {
     method: 'POST',
     headers: {
@@ -5546,7 +5548,8 @@ function handleExport() {
       resolution: res,
       vocalsUrl: vocalsUrl,
       audioMode: audioMode,
-      duration: state.duration
+      duration: state.duration,
+      exportMode: exportMode
     })
   })
   .then(response => {

@@ -484,6 +484,7 @@ const server = http.createServer((req, res) => {
         const config = data.config;
         const resolution = data.resolution || '1280x720';
         const duration = parseFloat(data.duration) || 180;
+        const exportMode = data.exportMode || 'both';
         
         if (!config || !config.config) {
           res.writeHead(400, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
@@ -572,36 +573,7 @@ const server = http.createServer((req, res) => {
           audioFilters.push('pan=stereo|c0=c0|c1=c0');
         }
  
-        // Spawn Karaoke Render
-        const argsKaraoke = [
-          '-y',
-          '-threads', '1',
-          '-i', safeAudioPath,
-          ...videoInput,
-          '-filter_complex', filterComplex,
-          '-map', '[v_sub]',
-          '-map', '0:a'
-        ];
-        if (audioFilters.length > 0) {
-          argsKaraoke.push('-af', audioFilters.join(','));
-        }
-        argsKaraoke.push(
-          '-c:v', 'libx264',
-          '-preset', 'ultrafast',
-          '-pix_fmt', 'yuv420p',
-          '-t', duration.toString(),
-          outKaraokePath
-        );
-        
-        console.log("FFmpeg path:", ffmpegPath);
-        console.log("FFmpeg Karaoke args:", argsKaraoke.join(' '));
-        
-        const ffmpegKaraoke = spawn(ffmpegPath, argsKaraoke);
-        
-        ffmpegKaraoke.on('close', (code1) => {
-          console.log(`FFmpeg Karaoke finished with code ${code1}`);
-          
-          // Spawn Original Vocals Render (always plays original vocals, uses videoInput)
+        const runOriginal = (karaokeUrl = null) => {
           const argsOriginal = [
             '-y',
             '-threads', '1',
@@ -620,13 +592,19 @@ const server = http.createServer((req, res) => {
           console.log("FFmpeg Original args:", argsOriginal.join(' '));
           const ffmpegOriginal = spawn(ffmpegPath, argsOriginal);
           
+          ffmpegOriginal.stdout.on('data', (chunk) => {
+            console.log(`[FFmpeg Original stdout] ${chunk.toString()}`);
+          });
+          ffmpegOriginal.stderr.on('data', (chunk) => {
+            console.error(`[FFmpeg Original stderr] ${chunk.toString()}`);
+          });
+          
           ffmpegOriginal.on('close', (code2) => {
             console.log(`FFmpeg Original finished with code ${code2}`);
-            
             res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
             res.end(JSON.stringify({
               success: true,
-              karaokeUrl: `/exports/${outKaraokeName}`,
+              karaokeUrl: karaokeUrl,
               originalUrl: `/exports/${outOriginalName}`
             }));
           });
@@ -636,13 +614,64 @@ const server = http.createServer((req, res) => {
             res.writeHead(500, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
             res.end(JSON.stringify({ error: `Original render failed: ${err.message}` }));
           });
-        });
-        
-        ffmpegKaraoke.on('error', (err) => {
-          console.error("FFmpeg Karaoke start error:", err);
-          res.writeHead(500, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
-          res.end(JSON.stringify({ error: `Karaoke render failed: ${err.message}` }));
-        });
+        };
+
+        if (exportMode === 'original') {
+          runOriginal(null);
+        } else {
+          // Spawn Karaoke Render
+          const argsKaraoke = [
+            '-y',
+            '-threads', '1',
+            '-i', safeAudioPath,
+            ...videoInput,
+            '-filter_complex', filterComplex,
+            '-map', '[v_sub]',
+            '-map', '0:a'
+          ];
+          if (audioFilters.length > 0) {
+            argsKaraoke.push('-af', audioFilters.join(','));
+          }
+          argsKaraoke.push(
+            '-c:v', 'libx264',
+            '-preset', 'ultrafast',
+            '-pix_fmt', 'yuv420p',
+            '-t', duration.toString(),
+            outKaraokePath
+          );
+          
+          console.log("FFmpeg path:", ffmpegPath);
+          console.log("FFmpeg Karaoke args:", argsKaraoke.join(' '));
+          
+          const ffmpegKaraoke = spawn(ffmpegPath, argsKaraoke);
+          
+          ffmpegKaraoke.stdout.on('data', (chunk) => {
+            console.log(`[FFmpeg Karaoke stdout] ${chunk.toString()}`);
+          });
+          ffmpegKaraoke.stderr.on('data', (chunk) => {
+            console.error(`[FFmpeg Karaoke stderr] ${chunk.toString()}`);
+          });
+          
+          ffmpegKaraoke.on('close', (code1) => {
+            console.log(`FFmpeg Karaoke finished with code ${code1}`);
+            if (exportMode === 'both') {
+              runOriginal(`/exports/${outKaraokeName}`);
+            } else {
+              res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+              res.end(JSON.stringify({
+                success: true,
+                karaokeUrl: `/exports/${outKaraokeName}`,
+                originalUrl: null
+              }));
+            }
+          });
+          
+          ffmpegKaraoke.on('error', (err) => {
+            console.error("FFmpeg Karaoke start error:", err);
+            res.writeHead(500, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+            res.end(JSON.stringify({ error: `Karaoke render failed: ${err.message}` }));
+          });
+        }
         
       } catch (e) {
         console.error("Render request parsing error:", e);
