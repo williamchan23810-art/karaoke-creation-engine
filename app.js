@@ -5462,7 +5462,7 @@ function logToConsole(message) {
 
 // --- Export & Queue management ---
 function handleExport() {
-  const res = selectResolution ? selectResolution.value : '1280x720';
+  const res = selectResolution ? selectResolution.value : '640x360';
   const queueId = `Render-${Math.floor(Math.random() * 9000 + 1000)}`;
   
   logToConsole(`Compiling project configuration for render. Queue ID: ${queueId}`);

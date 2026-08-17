@@ -482,7 +482,7 @@ const server = http.createServer((req, res) => {
       try {
         const data = JSON.parse(body);
         const config = data.config;
-        const resolution = data.resolution || '1280x720';
+        const resolution = data.resolution || '640x360';
         const duration = parseFloat(data.duration) || 180;
         const exportMode = data.exportMode || 'both';
         
