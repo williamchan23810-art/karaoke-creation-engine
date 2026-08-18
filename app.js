@@ -5462,7 +5462,7 @@ function logToConsole(message) {
 
 // --- Export & Queue management ---
 function handleExport() {
-  const res = selectResolution ? selectResolution.value : '640x360';
+  const res = selectResolution ? selectResolution.value : '1920x1080';
   const queueId = `Render-${Math.floor(Math.random() * 9000 + 1000)}`;
   
   logToConsole(`Compiling project configuration for render. Queue ID: ${queueId}`);
@@ -5557,36 +5557,103 @@ function handleExport() {
     return response.json();
   })
   .then(resData => {
-    clearInterval(interval);
-    progress = 100;
-    fill.style.width = '100%';
-    label.innerText = 'Completed';
-    label.style.color = '#39ff14';
-    logToConsole(`Batch exporter complete. MP4 video files rendered successfully!`);
-    
-    // Automatically trigger downloads of the actual rendered MP4 video files!
-    const linkKaraoke = document.createElement('a');
-    linkKaraoke.href = resData.karaokeUrl;
-    linkKaraoke.download = resData.karaokeUrl.split('/').pop();
-    document.body.appendChild(linkKaraoke);
-    linkKaraoke.click();
-    document.body.removeChild(linkKaraoke);
-    
-    setTimeout(() => {
-      const linkOriginal = document.createElement('a');
-      linkOriginal.href = resData.originalUrl;
-      linkOriginal.download = resData.originalUrl.split('/').pop();
-      document.body.appendChild(linkOriginal);
-      linkOriginal.click();
-      document.body.removeChild(linkOriginal);
-    }, 1200);
-    
-    // Auto-remove toast after 6 seconds
-    setTimeout(() => {
-      if (queueItem.parentNode) {
-        queueItem.parentNode.removeChild(queueItem);
+    if (resData.renderId) {
+      logToConsole(`Export request accepted by server. Render ID: ${resData.renderId}. Starting status polling...`);
+      label.innerText = 'Rendering (Background)...';
+      
+      const pollInterval = setInterval(() => {
+        fetch(`/api/render/status?id=${resData.renderId}`)
+        .then(response => {
+          if (!response.ok) throw new Error("Failed to fetch render status");
+          return response.json();
+        })
+        .then(statusData => {
+          if (statusData.status === 'completed') {
+            clearInterval(pollInterval);
+            clearInterval(interval);
+            
+            progress = 100;
+            fill.style.width = '100%';
+            label.innerText = 'Completed';
+            label.style.color = '#39ff14';
+            logToConsole(`Render complete! Initiating download...`);
+            
+            if (statusData.karaokeUrl) {
+              const linkKaraoke = document.createElement('a');
+              linkKaraoke.href = statusData.karaokeUrl;
+              linkKaraoke.download = statusData.karaokeUrl.split('/').pop();
+              document.body.appendChild(linkKaraoke);
+              linkKaraoke.click();
+              document.body.removeChild(linkKaraoke);
+            }
+            
+            if (statusData.originalUrl) {
+              setTimeout(() => {
+                const linkOriginal = document.createElement('a');
+                linkOriginal.href = statusData.originalUrl;
+                linkOriginal.download = statusData.originalUrl.split('/').pop();
+                document.body.appendChild(linkOriginal);
+                linkOriginal.click();
+                document.body.removeChild(linkOriginal);
+              }, statusData.karaokeUrl ? 1200 : 0);
+            }
+            
+            // Auto-remove toast after 6 seconds
+            setTimeout(() => {
+              if (queueItem.parentNode) {
+                queueItem.parentNode.removeChild(queueItem);
+              }
+            }, 6000);
+          } else if (statusData.status === 'failed') {
+            clearInterval(pollInterval);
+            clearInterval(interval);
+            fill.style.width = '100%';
+            fill.style.background = '#ef4444';
+            label.innerText = 'Failed';
+            label.style.color = '#ef4444';
+            logToConsole(`Export Error: ${statusData.error}`);
+            alert(`Render Error: ${statusData.error}`);
+          }
+        })
+        .catch(err => {
+          console.error("Status check failed:", err);
+        });
+      }, 3000);
+    } else {
+      // Direct download compatibility fallback
+      clearInterval(interval);
+      progress = 100;
+      fill.style.width = '100%';
+      label.innerText = 'Completed';
+      label.style.color = '#39ff14';
+      logToConsole(`Batch exporter complete. MP4 video files rendered successfully!`);
+      
+      if (resData.karaokeUrl) {
+        const linkKaraoke = document.createElement('a');
+        linkKaraoke.href = resData.karaokeUrl;
+        linkKaraoke.download = resData.karaokeUrl.split('/').pop();
+        document.body.appendChild(linkKaraoke);
+        linkKaraoke.click();
+        document.body.removeChild(linkKaraoke);
       }
-    }, 6000);
+      
+      if (resData.originalUrl) {
+        setTimeout(() => {
+          const linkOriginal = document.createElement('a');
+          linkOriginal.href = resData.originalUrl;
+          linkOriginal.download = resData.originalUrl.split('/').pop();
+          document.body.appendChild(linkOriginal);
+          linkOriginal.click();
+          document.body.removeChild(linkOriginal);
+        }, resData.karaokeUrl ? 1200 : 0);
+      }
+      
+      setTimeout(() => {
+        if (queueItem.parentNode) {
+          queueItem.parentNode.removeChild(queueItem);
+        }
+      }, 6000);
+    }
   })
   .catch(err => {
     clearInterval(interval);
@@ -6679,7 +6746,7 @@ function setupFrontPageEventListeners() {
     // Parse lyrics text into timed syllable structures
     let lyricsText = (lyricsSelfInput ? lyricsSelfInput.value : '').trim();
     if (!lyricsText) {
-      lyricsText = `Welcome to the creation of ${songName}.\nStart editing timings in the editor.`;
+      lyricsText = '';
     }
 
     // Set timeline configurations

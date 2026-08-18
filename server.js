@@ -472,6 +472,31 @@ const server = http.createServer((req, res) => {
     return;
   }
 
+  const activeRenders = new Map();
+
+  // GET /api/render/status - Get status of background render job
+  if (req.method === 'GET' && decodedUrl.startsWith('/api/render/status')) {
+    try {
+      const parsedUrl = new URL(req.url, `http://localhost:${PORT}`);
+      const renderId = parsedUrl.searchParams.get('id');
+      res.writeHead(200, { 
+        'Content-Type': 'application/json', 
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'GET, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type'
+      });
+      if (!renderId || !activeRenders.has(renderId)) {
+        res.end(JSON.stringify({ status: 'failed', error: 'Render job ID not found' }));
+        return;
+      }
+      res.end(JSON.stringify(activeRenders.get(renderId)));
+    } catch (e) {
+      res.writeHead(500, { 'Content-Type': 'text/plain', 'Access-Control-Allow-Origin': '*' });
+      res.end(`Failed to check status: ${e.message}`);
+    }
+    return;
+  }
+
   // POST /api/render - Render the video using local FFmpeg
   if (req.method === 'POST' && decodedUrl === '/api/render') {
     let body = '';
@@ -482,7 +507,7 @@ const server = http.createServer((req, res) => {
       try {
         const data = JSON.parse(body);
         const config = data.config;
-        const resolution = data.resolution || '640x360';
+        const resolution = data.resolution || '1920x1080';
         const duration = parseFloat(data.duration) || 180;
         const exportMode = data.exportMode || 'both';
         
@@ -545,7 +570,7 @@ const server = http.createServer((req, res) => {
         fs.writeFileSync(assPath, assContent, 'utf8');
         
         const assEscaped = assPath.replace(/\\/g, '/').replace(/:/g, '\\:');
- 
+  
         console.log(`Starting background FFmpeg render for ${songNameClean}...`);
         
         // We will run the renders sequentially or concurrently.
@@ -564,7 +589,7 @@ const server = http.createServer((req, res) => {
           videoInput = ['-f', 'lavfi', '-i', `color=c=black:s=${width}x${height}:r=25`];
           filterComplex = `[1:v]ass='${assEscaped}'[v_sub]`;
         }
- 
+  
         // Determine audio extraction filters for Karaoke version
         const audioFilters = [];
         if (audioMode === 'vocal-cut') {
@@ -572,25 +597,32 @@ const server = http.createServer((req, res) => {
         } else if (audioMode === 'multiplex') {
           audioFilters.push('pan=stereo|c0=c0|c1=c0');
         }
- 
+
+        // Generate render job ID
+        const renderId = 'render_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
+        activeRenders.set(renderId, { status: 'rendering', progress: 0 });
+
+        // Immediately respond to client with the Job ID!
+        res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+        res.end(JSON.stringify({ success: true, renderId: renderId, status: 'rendering' }));
+
+        // Now spawn the render processes in the background!
         let ffmpegProcess1 = null;
         let ffmpegProcess2 = null;
         let isTimedOut = false;
 
+        // Use a generous 5-minute timeout for background renders on Free Tier
         const killTimeout = setTimeout(() => {
           isTimedOut = true;
-          console.error("FFmpeg render timed out (90s limit)! Killing processes...");
+          console.error(`[Job ${renderId}] FFmpeg render timed out (5-minute limit)! Killing processes...`);
           if (ffmpegProcess1) {
             try { ffmpegProcess1.kill('SIGKILL'); } catch(e){}
           }
           if (ffmpegProcess2) {
             try { ffmpegProcess2.kill('SIGKILL'); } catch(e){}
           }
-          if (!res.writableEnded) {
-            res.writeHead(504, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
-            res.end(JSON.stringify({ error: "Render timed out (90 seconds limit). Try using a shorter audio file or lower resolution." }));
-          }
-        }, 90000);
+          activeRenders.set(renderId, { status: 'failed', error: 'Render job timed out (5-minute limit). Free tier resources were exhausted.' });
+        }, 300000);
 
         const runOriginal = (karaokeUrl = null) => {
           const argsOriginal = [
@@ -608,7 +640,7 @@ const server = http.createServer((req, res) => {
             outOriginalPath
           ];
           
-          console.log("FFmpeg Original args:", argsOriginal.join(' '));
+          console.log(`[Job ${renderId}] FFmpeg Original args:`, argsOriginal.join(' '));
           const ffmpegOriginal = spawn(ffmpegPath, argsOriginal);
           ffmpegProcess2 = ffmpegOriginal;
           
@@ -620,23 +652,25 @@ const server = http.createServer((req, res) => {
           });
           
           ffmpegOriginal.on('close', (code2) => {
-            console.log(`FFmpeg Original finished with code ${code2}`);
+            console.log(`[Job ${renderId}] FFmpeg Original finished with code ${code2}`);
             if (isTimedOut) return;
             clearTimeout(killTimeout);
-            res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
-            res.end(JSON.stringify({
-              success: true,
-              karaokeUrl: karaokeUrl,
-              originalUrl: `/exports/${outOriginalName}`
-            }));
+            if (code2 === 0) {
+              activeRenders.set(renderId, {
+                status: 'completed',
+                karaokeUrl: karaokeUrl,
+                originalUrl: `/exports/${outOriginalName}`
+              });
+            } else {
+              activeRenders.set(renderId, { status: 'failed', error: `Original render encoding failed with exit code ${code2}` });
+            }
           });
           
           ffmpegOriginal.on('error', (err) => {
-            console.error("FFmpeg Original start error:", err);
+            console.error(`[Job ${renderId}] FFmpeg Original start error:`, err);
             if (isTimedOut) return;
             clearTimeout(killTimeout);
-            res.writeHead(500, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
-            res.end(JSON.stringify({ error: `Original render failed: ${err.message}` }));
+            activeRenders.set(renderId, { status: 'failed', error: `Original render failed to start: ${err.message}` });
           });
         };
 
@@ -664,8 +698,7 @@ const server = http.createServer((req, res) => {
             outKaraokePath
           );
           
-          console.log("FFmpeg path:", ffmpegPath);
-          console.log("FFmpeg Karaoke args:", argsKaraoke.join(' '));
+          console.log(`[Job ${renderId}] FFmpeg Karaoke args:`, argsKaraoke.join(' '));
           
           const ffmpegKaraoke = spawn(ffmpegPath, argsKaraoke);
           ffmpegProcess1 = ffmpegKaraoke;
@@ -678,34 +711,39 @@ const server = http.createServer((req, res) => {
           });
           
           ffmpegKaraoke.on('close', (code1) => {
-            console.log(`FFmpeg Karaoke finished with code ${code1}`);
+            console.log(`[Job ${renderId}] FFmpeg Karaoke finished with code ${code1}`);
             if (isTimedOut) return;
-            if (exportMode === 'both') {
-              runOriginal(`/exports/${outKaraokeName}`);
+            if (code1 === 0) {
+              if (exportMode === 'both') {
+                runOriginal(`/exports/${outKaraokeName}`);
+              } else {
+                clearTimeout(killTimeout);
+                activeRenders.set(renderId, {
+                  status: 'completed',
+                  karaokeUrl: `/exports/${outKaraokeName}`,
+                  originalUrl: null
+                });
+              }
             } else {
               clearTimeout(killTimeout);
-              res.writeHead(200, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
-              res.end(JSON.stringify({
-                success: true,
-                karaokeUrl: `/exports/${outKaraokeName}`,
-                originalUrl: null
-              }));
+              activeRenders.set(renderId, { status: 'failed', error: `Karaoke render encoding failed with exit code ${code1}` });
             }
           });
           
           ffmpegKaraoke.on('error', (err) => {
-            console.error("FFmpeg Karaoke start error:", err);
+            console.error(`[Job ${renderId}] FFmpeg Karaoke start error:`, err);
             if (isTimedOut) return;
             clearTimeout(killTimeout);
-            res.writeHead(500, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
-            res.end(JSON.stringify({ error: `Karaoke render failed: ${err.message}` }));
+            activeRenders.set(renderId, { status: 'failed', error: `Karaoke render failed to start: ${err.message}` });
           });
         }
         
       } catch (e) {
         console.error("Render request parsing error:", e);
-        res.writeHead(500, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
-        res.end(JSON.stringify({ error: e.message }));
+        if (!res.writableEnded) {
+          res.writeHead(500, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+          res.end(JSON.stringify({ error: e.message }));
+        }
       }
     });
     return;
