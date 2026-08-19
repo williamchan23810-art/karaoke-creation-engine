@@ -190,6 +190,8 @@ const MIME_TYPES = {
   '.ico': 'image/x-icon'
 };
 
+const activeRenders = new Map();
+
 const server = http.createServer((req, res) => {
   console.log(`[Request] ${req.method} ${req.url}`);
   // Decode URL in case of special characters
@@ -471,8 +473,6 @@ const server = http.createServer((req, res) => {
     }
     return;
   }
-
-  const activeRenders = new Map();
 
   // GET /api/render/status - Get status of background render job
   if (req.method === 'GET' && decodedUrl.startsWith('/api/render/status')) {
